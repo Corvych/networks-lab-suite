@@ -1244,6 +1244,131 @@ body {
   color: var(--text-primary);
 }
 
+/* Theory KaTeX Math Styling */
+.theory-formula-block {
+  background: rgba(4, 9, 20, 0.75);
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.4rem;
+  margin: 1.15rem 0;
+  overflow-x: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 14px rgba(0, 240, 255, 0.03);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theory-formula-block:hover {
+  border-color: rgba(0, 240, 255, 0.45);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), inset 0 0 18px rgba(0, 240, 255, 0.06);
+}
+
+.theory-formula-block .katex-display {
+  margin: 0.25rem 0 !important;
+  text-align: center;
+}
+
+.katex {
+  font-size: 1.05em;
+  color: #e2e8f0;
+}
+
+.theory-formula-block .katex {
+  color: #00f0ff;
+  font-size: 1.18em;
+}
+
+.theory-formula-block.fsk-block {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 14px rgba(16, 185, 129, 0.04);
+}
+.theory-formula-block.fsk-block .katex {
+  color: #34d399;
+}
+
+.theory-formula-block.psk-block {
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 14px rgba(168, 85, 247, 0.04);
+}
+.theory-formula-block.psk-block .katex {
+  color: #c084fc;
+}
+
+.theory-formula-block.ask-block {
+  border-color: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45), inset 0 0 14px rgba(56, 189, 248, 0.04);
+}
+.theory-formula-block.ask-block .katex {
+  color: #38bdf8;
+}
+
+.theory-code-table .katex {
+  font-size: 0.95em;
+  color: #38bdf8;
+}
+
+/* "For Dummies" Theory Explanations & Visual Cards */
+.theory-analogy-card {
+  background: rgba(12, 19, 36, 0.7);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.35rem;
+  margin: 1.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  backdrop-filter: blur(10px);
+}
+
+.theory-analogy-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 0.96rem;
+  color: var(--accent-cyan);
+}
+
+.theory-workbench-tip {
+  background: rgba(0, 240, 255, 0.05);
+  border-left: 3px solid #00f0ff;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin: 0.85rem 0 0.5rem 0;
+  font-size: 0.88rem;
+  color: #e2e8f0;
+  line-height: 1.6;
+}
+
+.theory-workbench-tip.tip-emerald {
+  background: rgba(16, 185, 129, 0.05);
+  border-left-color: #10b981;
+}
+
+.theory-workbench-tip.tip-purple {
+  background: rgba(168, 85, 247, 0.05);
+  border-left-color: #c084fc;
+}
+
+.theory-formula-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+  margin: 0.5rem 0 1rem 0;
+  padding: 0.65rem 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.theory-formula-breakdown .breakdown-item strong {
+  color: #00f0ff;
+  margin-right: 0.25rem;
+}
+
 /* Tasks / Quiz Section */
 .tasks-container {
   display: flex;
@@ -1943,12 +2068,16 @@ body {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .node-schematic-screen.instrument-screen {
   height: 115px;
   background: #040810;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .node-schematic-svg-container {
@@ -1958,6 +2087,8 @@ body {
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .node-schematic-svg {
@@ -2174,10 +2305,59 @@ body {
   height: 840px;
   min-height: 740px;
   position: relative;
+  transition: gap 0.2s ease;
+}
+
+/* Fullscreen Workbench Mode (Native Fullscreen & CSS Overlay) */
+.workbench-layout-vertical:fullscreen,
+.workbench-layout-vertical:-webkit-full-screen,
+.workbench-layout-vertical.is-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0.75rem 1rem 0.85rem 1rem !important;
+  box-sizing: border-box !important;
+  background: radial-gradient(circle at 50% 25%, #081226 0%, #020612 100%) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+body.workbench-fullscreen-open {
+  overflow: hidden !important;
+}
+
+.workbench-layout-vertical:fullscreen .workbench-viewport,
+.workbench-layout-vertical:-webkit-full-screen .workbench-viewport,
+.workbench-layout-vertical.is-fullscreen .workbench-viewport {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.85), inset 0 0 30px rgba(0, 240, 255, 0.05);
+}
+
+.workbench-layout-vertical:fullscreen .workbench-bottom-dock,
+.workbench-layout-vertical:-webkit-full-screen .workbench-bottom-dock,
+.workbench-layout-vertical.is-fullscreen .workbench-bottom-dock {
+  flex-shrink: 0;
+  background: rgba(10, 16, 30, 0.94);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 240, 255, 0.08);
 }
 
 @media (max-width: 900px) {
-  .workbench-layout-vertical {
+  .workbench-layout-vertical:not(.is-fullscreen) {
     height: auto;
     min-height: auto;
   }
@@ -2199,6 +2379,23 @@ body {
   backdrop-filter: blur(16px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   flex-shrink: 0;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.workbench-bottom-dock.is-collapsed {
+  gap: 0;
+  padding: 0.45rem 1rem;
+}
+
+.workbench-bottom-dock.is-collapsed .bottom-dock-header {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.workbench-bottom-dock.is-collapsed .dock-legend,
+.workbench-bottom-dock.is-collapsed .dock-hint,
+.workbench-bottom-dock.is-collapsed .bottom-dock-cards-scroll {
+  display: none !important;
 }
 
 .bottom-dock-header {
@@ -2608,6 +2805,22 @@ body {
   background: rgba(0, 240, 255, 0.12);
   border-color: rgba(0, 240, 255, 0.35);
   color: var(--accent-cyan);
+}
+
+.wb-action-btn.is-active,
+.wb-btn-fullscreen.is-active {
+  background: rgba(0, 240, 255, 0.22) !important;
+  border-color: rgba(0, 240, 255, 0.6) !important;
+  color: #00f0ff !important;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+  font-weight: 700;
+}
+
+.wb-btn-fullscreen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 600;
 }
 
 #wb-preset-select option {

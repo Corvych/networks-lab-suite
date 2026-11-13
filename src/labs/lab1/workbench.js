@@ -82,6 +82,10 @@ export class CircuitWorkbench {
     this.selectedWireId = null; // Currently clicked / selected cable wire
     this.escKeyHandler = null;
     this.docClickHandler = null;
+    this.isFullscreen = false;
+    this.isDockCollapsed = false;
+    this.fullscreenChangeHandler = null;
+    this.windowResizeHandler = null;
 
     this.initUI();
     // Start with a clean empty canvas so the student builds from scratch!
@@ -128,6 +132,12 @@ export class CircuitWorkbench {
               <button class="wb-action-btn" id="btn-wb-clear-all">🗑️ Очистить всё</button>
               <button class="wb-action-btn" id="btn-wb-clear-wires">✂️ Снять кабели</button>
               <button class="wb-action-btn" id="btn-wb-audio-toggle">🔊 Звук: Выкл</button>
+              <button class="wb-action-btn wb-btn-fullscreen" id="btn-wb-fullscreen" title="Развернуть холст на полный экран (Esc для выхода)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                </svg>
+                <span>На весь экран</span>
+              </button>
             </div>
           </div>
 
@@ -162,6 +172,9 @@ export class CircuitWorkbench {
               <span class="dock-legend-pill pill-inst">● Измерители</span>
               <span class="dock-legend-pill pill-rx">● Приемник</span>
             </div>
+            <button class="wb-action-btn" id="btn-wb-toggle-dock" style="font-size: 0.72rem; padding: 0.2rem 0.55rem; margin-left: auto;" title="Свернуть / развернуть инвентарь блоков">
+              <span id="dock-toggle-icon">▾</span> <span id="dock-toggle-label">Свернуть</span>
+            </button>
           </div>
 
           <div class="bottom-dock-cards-scroll">
@@ -604,21 +617,11 @@ export class CircuitWorkbench {
 
     const minHeight = headerH + schematicH + paramsContentH + 6;
 
-    // 4. Minimum Width with generous side padding (indented from left/right borders)
-    let minWidth = 265;
-    if (header) {
-      const titleGroup = header.querySelector('.node-title-group');
-      const actions = header.querySelector('.node-header-actions');
-      if (titleGroup && actions) {
-        minWidth = Math.max(minWidth, titleGroup.scrollWidth + actions.scrollWidth + 50);
-      }
-    }
-    if (type === 'oscilloscope' || type === 'spectrograph') {
-      minWidth = Math.max(minWidth, 295);
-    }
+    // 4. Stable Minimum Width (does not fluctuate or expand unexpectedly)
+    const minWidth = (type === 'oscilloscope' || type === 'spectrograph') ? 280 : 250;
 
     return {
-      width: Math.ceil(minWidth),
+      width: minWidth,
       height: Math.ceil(minHeight)
     };
   }
@@ -811,7 +814,7 @@ export class CircuitWorkbench {
 
         if (sType === 'audio_dual') {
           return `
-            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+            <svg viewBox="0 0 240 76" class="node-schematic-svg" preserveAspectRatio="none">
               <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
               <!-- Human Speaking Profile -->
               <g transform="translate(10, 18) scale(0.85)" stroke="#00f0ff" fill="none" stroke-width="1.8">
@@ -832,7 +835,7 @@ export class CircuitWorkbench {
           `;
         } else if (sType === 'digital_bits') {
           return `
-            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+            <svg viewBox="0 0 240 76" class="node-schematic-svg" preserveAspectRatio="none">
               <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
               <!-- Computer Data Stream -->
               <g transform="translate(10, 18) scale(0.85)" stroke="#00f0ff" fill="none" stroke-width="1.6">
@@ -851,7 +854,7 @@ export class CircuitWorkbench {
           `;
         } else if (sType === 'video_step') {
           return `
-            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+            <svg viewBox="0 0 240 76" class="node-schematic-svg" preserveAspectRatio="none">
               <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
               <!-- Video Camera -->
               <g transform="translate(10, 20) scale(0.85)" stroke="#38bdf8" fill="none" stroke-width="1.8">
@@ -866,7 +869,7 @@ export class CircuitWorkbench {
         } else {
           // audio_single (Тон)
           return `
-            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+            <svg viewBox="0 0 240 76" class="node-schematic-svg" preserveAspectRatio="none">
               <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
               <!-- Note symbol -->
               <g transform="translate(10, 20) scale(0.9)" stroke="#00f0ff" fill="none" stroke-width="1.8">
@@ -890,7 +893,7 @@ export class CircuitWorkbench {
         const fc = (node.params.fc / 1000).toFixed(1);
         const ac = (node.params.ac).toFixed(1);
         return `
-          <svg viewBox="0 0 240 76" class="node-schematic-svg">
+          <svg viewBox="0 0 240 76" class="node-schematic-svg" preserveAspectRatio="none">
             <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(168,85,247,0.12)" stroke-dasharray="2 3"/>
             <!-- Radio Tower / Antenna -->
             <g transform="translate(10, 16) scale(0.85)" stroke="#a855f7" fill="none" stroke-width="1.8">
@@ -926,7 +929,7 @@ export class CircuitWorkbench {
         const modeDesc = modeLabelMap[mode] || mode;
 
         return `
-          <svg viewBox="0 0 240 90" class="node-schematic-svg">
+          <svg viewBox="0 0 240 90" class="node-schematic-svg" preserveAspectRatio="none">
             <!-- Audio input line -->
             <line x1="0" y1="26" x2="60" y2="26" stroke="#00f0ff" stroke-width="1.8"/>
             <path d="M 12 26 Q 22 17 32 26 T 52 26" fill="none" stroke="#00f0ff" stroke-width="1.4"/>
@@ -957,7 +960,7 @@ export class CircuitWorkbench {
         const bw = (node.params.filterBandwidth / 1000).toFixed(1);
         const noise = node.params.noise || 0;
         return `
-          <svg viewBox="0 0 240 76" class="node-schematic-svg">
+          <svg viewBox="0 0 240 76" class="node-schematic-svg" preserveAspectRatio="none">
             <line x1="0" y1="38" x2="42" y2="38" stroke="#00f0ff" stroke-width="1.8"/>
             <!-- Bandpass Resonance Bell -->
             <path d="M 42 54 L 72 52 Q 102 50 115 16 Q 120 8 125 16 Q 138 50 168 52 L 198 54 Z" fill="rgba(16,185,129,0.2)" stroke="#10b981" stroke-width="2"/>
@@ -973,7 +976,7 @@ export class CircuitWorkbench {
 
       case 'receiver': {
         return `
-          <svg viewBox="0 0 240 76" class="node-schematic-svg">
+          <svg viewBox="0 0 240 76" class="node-schematic-svg" preserveAspectRatio="none">
             <line x1="0" y1="38" x2="42" y2="38" stroke="#f59e0b" stroke-width="1.8"/>
             <!-- Diode detector -->
             <polygon points="42,26 42,50 60,38" fill="#f59e0b"/>
@@ -1576,8 +1579,10 @@ export class CircuitWorkbench {
         // Dynamically update schematic SVG
         this.updateNodeSchematic(node, el);
 
-        // Auto-expand block if newly displayed rows or inputs exceed current size
-        this.autoExpandNodeIfNeeded(node, el, true);
+        // Auto-expand block ONLY if mode or signal type toggled new rows
+        if (paramName === 'sourceType' || paramName === 'mode') {
+          this.autoExpandNodeIfNeeded(node, el, true);
+        }
 
         this.graph.notify();
       });
@@ -2074,6 +2079,47 @@ export class CircuitWorkbench {
       this.toggleAudio();
     });
 
+    // Fullscreen canvas toggle
+    const fsBtn = this.container.querySelector('#btn-wb-fullscreen');
+    if (fsBtn) {
+      fsBtn.addEventListener('click', () => {
+        this.toggleFullscreen();
+      });
+    }
+
+    // Bottom dock (inventory) collapse/expand toggle
+    const toggleDockBtn = this.container.querySelector('#btn-wb-toggle-dock');
+    if (toggleDockBtn) {
+      toggleDockBtn.addEventListener('click', () => {
+        this.toggleDock();
+      });
+    }
+
+    // Fullscreen change listener to sync UI state if exited via native Esc / F11
+    this.fullscreenChangeHandler = () => {
+      const isNative = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      if (!isNative && this.isFullscreen) {
+        const layout = this.container.querySelector('.workbench-layout-vertical');
+        this.isFullscreen = false;
+        if (layout) layout.classList.remove('is-fullscreen');
+        document.body.classList.remove('workbench-fullscreen-open');
+        this.updateFullscreenButton();
+        setTimeout(() => {
+          this.updateTransform();
+          this.updateWires();
+        }, 80);
+      }
+    };
+    document.addEventListener('fullscreenchange', this.fullscreenChangeHandler);
+    document.addEventListener('webkitfullscreenchange', this.fullscreenChangeHandler);
+
+    // Responsive window resize listener
+    this.windowResizeHandler = () => {
+      this.updateTransform();
+      this.updateWires();
+    };
+    window.addEventListener('resize', this.windowResizeHandler);
+
     // 6. Instrument Modal Window Controls
     const modalBackdrop = this.container.querySelector('#wb-instrument-modal');
     const modalCloseBtn = this.container.querySelector('#btn-modal-close');
@@ -2105,11 +2151,13 @@ export class CircuitWorkbench {
         this.closeAllCustomDropdowns();
         if (this.activeWiring) {
           this.cancelWiring();
-        }
-        if (this.activeModalNodeId) {
+        } else if (this.activeModalNodeId) {
           this.closeInstrumentModal();
+        } else if (this.selectedWireId) {
+          this.deselectWire();
+        } else if (this.isFullscreen) {
+          this.exitFullscreen();
         }
-        this.deselectWire();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         const activeTag = document.activeElement?.tagName;
         if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT' || document.activeElement?.isContentEditable) {
@@ -3905,10 +3953,126 @@ export class CircuitWorkbench {
     if (menu) menu.style.display = 'none';
   }
 
+  toggleFullscreen() {
+    if (this.isFullscreen) {
+      this.exitFullscreen();
+    } else {
+      this.enterFullscreen();
+    }
+  }
+
+  enterFullscreen() {
+    const layout = this.container.querySelector('.workbench-layout-vertical');
+    if (!layout) return;
+
+    this.isFullscreen = true;
+    layout.classList.add('is-fullscreen');
+    document.body.classList.add('workbench-fullscreen-open');
+    this.updateFullscreenButton();
+
+    if (layout.requestFullscreen) {
+      layout.requestFullscreen().catch(() => {});
+    } else if (layout.webkitRequestFullscreen) {
+      layout.webkitRequestFullscreen();
+    }
+
+    setTimeout(() => {
+      this.updateTransform();
+      this.updateWires();
+    }, 60);
+    setTimeout(() => {
+      this.updateTransform();
+      this.updateWires();
+    }, 200);
+  }
+
+  exitFullscreen() {
+    const layout = this.container.querySelector('.workbench-layout-vertical');
+    if (!layout) return;
+
+    this.isFullscreen = false;
+    layout.classList.remove('is-fullscreen');
+    document.body.classList.remove('workbench-fullscreen-open');
+    this.updateFullscreenButton();
+
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
+
+    setTimeout(() => {
+      this.updateTransform();
+      this.updateWires();
+    }, 60);
+    setTimeout(() => {
+      this.updateTransform();
+      this.updateWires();
+    }, 200);
+  }
+
+  updateFullscreenButton() {
+    const btn = this.container.querySelector('#btn-wb-fullscreen');
+    if (!btn) return;
+
+    if (this.isFullscreen) {
+      btn.classList.add('is-active');
+      btn.setAttribute('title', 'Выйти из полноэкранного режима (Esc)');
+      btn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;">
+          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+        </svg>
+        <span>Свернуть</span>
+      `;
+    } else {
+      btn.classList.remove('is-active');
+      btn.setAttribute('title', 'Развернуть холст на полный экран (Esc для выхода)');
+      btn.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+        <span>На весь экран</span>
+      `;
+    }
+  }
+
+  toggleDock() {
+    const dock = this.container.querySelector('.workbench-bottom-dock');
+    if (!dock) return;
+    this.isDockCollapsed = !this.isDockCollapsed;
+    dock.classList.toggle('is-collapsed', this.isDockCollapsed);
+
+    const icon = this.container.querySelector('#dock-toggle-icon');
+    const label = this.container.querySelector('#dock-toggle-label');
+    if (icon) icon.textContent = this.isDockCollapsed ? '▴' : '▾';
+    if (label) label.textContent = this.isDockCollapsed ? 'Развернуть инвентарь' : 'Свернуть';
+
+    setTimeout(() => {
+      this.updateTransform();
+      this.updateWires();
+    }, 60);
+    setTimeout(() => {
+      this.updateTransform();
+      this.updateWires();
+    }, 200);
+  }
+
   destroy() {
     if (this.animationId) cancelAnimationFrame(this.animationId);
     if (this.escKeyHandler) document.removeEventListener('keydown', this.escKeyHandler);
     if (this.docClickHandler) document.removeEventListener('click', this.docClickHandler);
+    if (this.fullscreenChangeHandler) {
+      document.removeEventListener('fullscreenchange', this.fullscreenChangeHandler);
+      document.removeEventListener('webkitfullscreenchange', this.fullscreenChangeHandler);
+    }
+    if (this.windowResizeHandler) {
+      window.removeEventListener('resize', this.windowResizeHandler);
+    }
+    if (this.isFullscreen) {
+      this.exitFullscreen();
+    }
     this.stopAudio();
   }
 }

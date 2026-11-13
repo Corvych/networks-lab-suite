@@ -1,41 +1,131 @@
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
+
+/**
+ * Render inline LaTeX formula with error handling
+ */
+function m(latex) {
+  try {
+    return katex.renderToString(latex, {
+      throwOnError: false,
+      displayMode: false
+    });
+  } catch (err) {
+    return `<code>${latex}</code>`;
+  }
+}
+
+/**
+ * Render block (display) LaTeX formula with styled card container
+ */
+function mb(latex, customClass = '') {
+  try {
+    const rendered = katex.renderToString(latex, {
+      throwOnError: false,
+      displayMode: true
+    });
+    return `<div class="theory-formula-block ${customClass}">${rendered}</div>`;
+  } catch (err) {
+    return `<div class="theory-formula-block ${customClass}"><code>${latex}</code></div>`;
+  }
+}
+
 export function renderTheory() {
   return `
     <div class="theory-wrapper">
+      <!-- Introductory "For Dummies" Overview -->
+      <div class="theory-analogy-card" style="border-left: 4px solid var(--accent-cyan);">
+        <div class="theory-analogy-header">
+          <span>💡</span>
+          <span>Зачем вообще нужна модуляция? (Аналогия «Пассажир и Поезд»)</span>
+        </div>
+        <p class="theory-p" style="margin-bottom: 0.5rem; font-size: 0.92rem;">
+          Человеческий голос и звук — это низкочастотные колебания (${m('F_m \\approx 1')} кГц). Если громко крикнуть в поле, звук затухнет уже через 100 метров. Чтобы излучить звуковую частоту напрямую в эфир в виде радиоволны, понадобилась бы антенна длиной в <strong>75 километров</strong>!
+        </p>
+        <p class="theory-p" style="margin-bottom: 0; font-size: 0.92rem;">
+          Поэтому инженеры используют высокочастотную радиоволну — <strong>несущую</strong> (${m('F_c = 20')} кГц или сотни МГц). Она играет роль скоростного <strong>поезда-экспресса</strong>: легко летит сквозь пространство, а её антенна помещается в смартфоне. 
+          <strong>Модуляция</strong> — это посадка нашего «пассажира» (звука или цифровых данных) на «поезд» несущей волны.
+        </p>
+      </div>
+
       <!-- Section 1: Analog Amplitude Modulation -->
       <div class="theory-section">
         <h2 class="theory-heading">
-          1. Физические основы амплитудной модуляции (AM, DSB, SSB)
+          1. Амплитудная модуляция (АМ): «Громкость радиоволны»
         </h2>
+        
         <p class="theory-p">
-          <strong>Амплитудная модуляция (АМ / AM)</strong> — процесс изменения амплитуды высокочастотного несущего колебания (несущей) по закону низкочастотного непрерывного информационного сигнала (сообщения: речь, аудиотон, видео).
+          <strong>Суть на пальцах:</strong> Представьте луч мощного прожектора (несущую). Если плавно регулировать его яркость (ярче — темнее — ярче) в такт звучащей музыке, свет донесет мелодию до наблюдателя. На приемном конце фотоэлемент измерит колебания яркости и восстановит звук.
         </p>
+
         <p class="theory-p">
-          Пусть модулирующий аналоговый сигнал: <code>s<sub>m</sub>(t) = A<sub>m</sub> cos(2π F<sub>m</sub> t)</code>,<br/>
-          а несущее высокочастотное колебание: <code>c(t) = A<sub>c</sub> cos(2π F<sub>c</sub> t)</code>, где <code>F<sub>c</sub> ≫ F<sub>m</sub></code>.
+          <strong>Базовая формула АМ:</strong>
         </p>
-        <p class="theory-p">
-          Тогда амплитудно-модулированный сигнал с несущей (<strong>DSB-FC</strong> — Double Sideband Full Carrier) описывается выражением:
-        </p>
-        <div style="background: rgba(8, 12, 20, 0.6); padding: 1rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border); font-family: var(--font-mono); font-size: 1rem; color: var(--accent-cyan); margin-bottom: 1.25rem;">
-          s<sub>AM</sub>(t) = A<sub>c</sub> [1 + m · cos(2π F<sub>m</sub> t)] · cos(2π F<sub>c</sub> t)
+        ${mb('s(t) = A(t) \\cdot \\cos(2\\pi F_c t)')}
+        
+        <div class="theory-formula-breakdown">
+          <div class="breakdown-item"><strong>${m('s(t)')}</strong> — итоговый сигнал в эфире</div>
+          <div class="breakdown-item"><strong>${m('F_c')}</strong> — частота радиоволны (несущей)</div>
+          <div class="breakdown-item"><strong>${m('A(t)')}</strong> — амплитуда («яркость»), которая меняется синхронно с нашим звуком:</div>
         </div>
+
+        ${mb('A(t) = A_c \\cdot \\left[ 1 + m \\cdot \\cos(2\\pi F_m t) \\right]')}
+
+        <div style="background: rgba(0, 0, 0, 0.25); border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin: 1rem 0;">
+          <h4 style="color: var(--accent-cyan); font-size: 0.95rem; margin-bottom: 0.5rem;">
+            Что такое глубина модуляции ${m('m')}?
+          </h4>
+          ${mb('m = \\frac{\\text{Амплитуда звука } (A_m)}{\\text{Амплитуда несущей } (A_c)}')}
+          <ul style="margin-left: 1.5rem; color: var(--text-secondary); line-height: 1.8; font-size: 0.88rem;">
+            <li><strong>${m('m < 1')} (Норма):</strong> Звук чистый и прозрачный. Огибающая волны в точности повторяет форму звуковой волны. Сигнал принимает простейший детектор из одного диода.</li>
+            <li><strong>${m('m = 1')} (100% модуляция):</strong> Идеальный баланс максимальной громкости без искажений.</li>
+            <li><strong>${m('m > 1')} (Перемодуляция / Хрип):</strong> Звук слишком громкий для несущей! В моменты тишины волна «схлопывается» в ноль и обрезается. В радиоприемнике слышен сильный треск и искажения.</li>
+          </ul>
+        </div>
+
         <p class="theory-p">
-          где <strong>m = A<sub>m</sub> / A<sub>c</sub></strong> — <em>коэффициент глубины модуляции</em> (индекс модуляции):
+          <strong>Что показывает спектрограф при АМ? (Всего три пика!):</strong>
         </p>
-        <ul style="margin-left: 1.5rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 1.5rem;">
-          <li><strong>m &lt; 1 (недомодуляция):</strong> огибающая точно повторяет форму сообщения; сигнал легко детектируется простейшим диодным пиковым детектором огибающей.</li>
-          <li><strong>m = 1 (100% модуляция):</strong> предельный случай максимальной мощности информационных боковых полос без искажения огибающей.</li>
-          <li><strong>m &gt; 1 (перемодуляция):</strong> искажение формы («срез» огибающей в нуле) со скачком фазы на 180°, появление паразитных гармоник и расширение занимаемой полосы частот.</li>
-        </ul>
+        ${mb('\\underbrace{F_c - F_m}_{\\text{Нижняя боковая (LSB)}} \\quad \\longleftarrow \\quad \\underbrace{F_c}_{\\text{Несущая волна}} \\quad \\longrightarrow \\quad \\underbrace{F_c + F_m}_{\\text{Верхняя боковая (USB)}}')}
+        <p class="theory-p" style="font-size: 0.88rem;">
+          В спектре появляется сама несущая частота ${m('F_c')} и две зеркальные копии звука по бокам: ${m('F_c - F_m')} и ${m('F_c + F_m')}.
+        </p>
+
+        <p class="theory-p">
+          <strong>Сколько места в эфире занимает АМ (Ширина полосы):</strong>
+        </p>
+        ${mb('\\Delta F_{\\text{AM}} = 2 \\cdot F_m')}
+        <p class="theory-p" style="font-size: 0.88rem;">
+          <em>Простой пример:</em> Если передавать голос с верхней частотой ${m('F_m = 3')} кГц, радиостанции в эфире потребуется полоса шириной ровно ${m('\\Delta F = 2 \\times 3 = 6')} кГц.
+        </p>
+
+        <!-- SSB Explanation -->
+        <div style="background: rgba(0, 240, 255, 0.05); border-left: 4px solid var(--accent-cyan); border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin: 1.25rem 0;">
+          <h4 style="color: var(--accent-cyan); margin-bottom: 0.4rem; font-size: 0.95rem; font-weight: 700;">
+            Лайфхак связистов: Однополосная модуляция (SSB / ОМ)
+          </h4>
+          <p class="theory-p" style="margin-bottom: 0.5rem; font-size: 0.88rem;">
+            Зачем передавать две одинаковые копии звука и тратить 50% энергии передатчика на пустую несущую? Фильтром просто <strong>вырезают половину</strong>:
+          </p>
+          ${mb('\\Delta F_{\\text{SSB}} = F_m \\quad \\text{(полоса в 2 раза уже!)}')}
+          <p class="theory-p" style="margin-bottom: 0; font-size: 0.88rem;">
+            Благодаря этому передатчик SSB бьет на тысячи километров при скромной мощности. Так общаются радиолюбители, моряки и дальняя авиация.
+          </p>
+        </div>
+
+        <div class="theory-workbench-tip">
+          🎯 <strong>Как проверить на стенде:</strong> Подключите <em>Источник</em> $\\rightarrow$ <em>Модулятор</em> $\\rightarrow$ <em>Осциллограф</em>. Покрутите ползунок <code>Индекс модуляции m</code> от 0.3 до 1.5. На осциллографе вы наглядно увидите, как огибающая сначала идеально повторяет синусоиду, а при $m > 1$ начинает схлопываться в ноль!
+        </div>
       </div>
 
       <!-- Section 2: Digital Shift Keying (Manipulations) -->
       <div class="theory-section">
         <h2 class="theory-heading">
-          2. Дискретные манипуляции (Цифровая модуляция: ASK, FSK, PSK)
+          2. Цифровая модуляция (Манипуляция): «Как передавать 0 и 1»
         </h2>
         <p class="theory-p">
-          В современных цифровых сетях и телекоммуникациях для передачи двоичных данных <code>d(t) ∈ {0, 1}</code> с битовой скоростью <code>R<sub>b</sub></code> (бит/с) используется <strong>дискретная модуляция (манипуляция, Shift Keying)</strong>. При манипуляции один из параметров несущего колебания — амплитуда, частота или начальная фаза — скачкообразно изменяется в моменты смены битов.
+          Компьютер говорит на языке двоичных бит: <strong>0 и 1</strong> со скоростью ${m('R_b')} бит/с (например, 800 бит/с). 
+          У синусоидальной волны есть всего три свойства, которыми можно закодировать бит: <strong>Амплитуда</strong>, <strong>Частота</strong> и <strong>Фаза</strong>.
         </p>
 
         <div style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1.25rem;">
@@ -43,78 +133,104 @@ export function renderTheory() {
           <div style="background: rgba(8, 12, 20, 0.5); padding: 1.25rem; border-radius: var(--radius-md); border-left: 4px solid var(--accent-cyan); border-top: 1px solid var(--bg-card-border); border-right: 1px solid var(--bg-card-border); border-bottom: 1px solid var(--bg-card-border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
               <h3 style="color: var(--accent-cyan); font-size: 1.1rem; font-weight: 700;">
-                Амплитудная манипуляция (АМн / ASK — Amplitude Shift Keying)
+                2.1. ASK (АМн) — «Принцип фонарика / Азбука Морзе»
               </h3>
-              <span class="badge" style="background: rgba(0, 240, 255, 0.15); color: #00f0ff; font-family: var(--font-mono); font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px;">OOK / 2-ASK</span>
+              <span class="badge" style="background: rgba(0, 240, 255, 0.15); color: #00f0ff; font-family: var(--font-mono); font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px;">OOK</span>
             </div>
+            
             <p class="theory-p">
-              При амплитудной манипуляции информационный бит определяет амплитуду несущего гармонического колебания. В простейшем и наиболее распространенном случае <strong>OOK (On-Off Keying — манипуляция включением/выключением)</strong> передача логической единицы «1» осуществляется посылкой несущей максимальной амплитуды <code>A<sub>c</sub></code>, а логического нуля «0» — полным отключением несущей или излучением посылки минимального уровня <code>k · A<sub>c</sub></code>:
+              <strong>Правило:</strong> Передаем бит «1» — включаем радиоволну. Передаем бит «0» — выключаем волну (тишина).
             </p>
-            <div style="background: rgba(0, 0, 0, 0.4); padding: 0.75rem 1.25rem; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.95rem; color: #38bdf8; margin: 0.75rem 0;">
-              s<sub>ASK</sub>(t) = d(t) · A<sub>c</sub> · cos(2π F<sub>c</sub> t)
-            </div>
+
+            ${mb('\\text{Бит 1} \\longrightarrow A = A_c \\quad (\\text{волна есть}), \\qquad \\text{Бит 0} \\longrightarrow A = 0 \\quad (\\text{тишина})', 'ask-block')}
+
             <p class="theory-p" style="font-size: 0.88rem;">
-              <strong>Спектр ASK:</strong> Представляет собой спектр несущей частоты <code>F<sub>c</sub></code> с боковыми лепестками функции sinc(f), ширина главного лепестка по первым нулям составляет <code>B ≈ 2 · R<sub>b</sub></code>.
-              <br/>
-              <strong>Применение:</strong> Простейшие радиометки RFID, бесконтактные смарт-карты, NFC, брелоки автосигнализаций (433/868 МГц), оптические волоконные линии связи (где лазер включается и выключается).
+              <strong>Сколько места занимает в эфире:</strong>
             </p>
+            ${mb('B_{\\text{ASK}} \\approx 2 \\cdot R_b', 'ask-block')}
+            <p class="theory-p" style="font-size: 0.88rem;">
+              <em>Пример:</em> При битовой скорости ${m('R_b = 800')} бит/с ширина основного спектрального лепестка составит ${m('B \\approx 2 \\times 800 = 1600')} Гц (${m('1.6')} кГц).
+            </p>
+            <p class="theory-p" style="font-size: 0.88rem;">
+              <strong>Плюсы и минусы:</strong> Схема предельно дешевая, но очень чувствительна к помехам. Если пойдет дождь или машина отъедет дальше, радиоволна ослабнет — и приемник перепутает единицу с нулем.<br/>
+              <strong>Где встречается:</strong> Брелоки автосигнализаций и шлагбаумов (433 МГц), проездные карты RFID и NFC, ИК-пульты от телевизора.
+            </p>
+
+            <div class="theory-workbench-tip">
+              🎯 <strong>На стенде:</strong> Выберите режим <code>ASK</code> и введите биты <code>10110010</code>. На осциллографе вы увидите пачки радиоволн: на битах «1» волна идет, а на битах «0» — ровная горизонтальная линия!
+            </div>
           </div>
 
           <!-- 2.2 FSK -->
           <div style="background: rgba(8, 12, 20, 0.5); padding: 1.25rem; border-radius: var(--radius-md); border-left: 4px solid var(--accent-emerald); border-top: 1px solid var(--bg-card-border); border-right: 1px solid var(--bg-card-border); border-bottom: 1px solid var(--bg-card-border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
               <h3 style="color: var(--accent-emerald); font-size: 1.1rem; font-weight: 700;">
-                Частотная манипуляция (ЧМн / FSK — Frequency Shift Keying)
+                2.2. FSK (ЧМн) — «Принцип двух свистков»
               </h3>
-              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-family: var(--font-mono); font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px;">2-FSK / BFSK</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; font-family: var(--font-mono); font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px;">2-FSK</span>
             </div>
+
             <p class="theory-p">
-              При частотной манипуляции амплитуда колебания остается постоянной (<code>A(t) = A<sub>c</sub> = const</code>), а частота несущей переключается между двумя дискретными значениями в зависимости от передаваемого бита:
+              <strong>Правило:</strong> Представьте, что у вас два свистка разной тональности. Передаем бит «0» — свистим басом (пониже). Передаем бит «1» — свистим писком (повыше).
             </p>
-            <ul style="margin-left: 1.5rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 0.75rem; font-size: 0.9rem;">
-              <li>Символ «0» (Space): частота <code>f<sub>0</sub> = F<sub>c</sub> - ΔF</code></li>
-              <li>Символ «1» (Mark): частота <code>f<sub>1</sub> = F<sub>c</sub> + ΔF</code></li>
-            </ul>
-            <p class="theory-p" style="font-size: 0.88rem;">
-              где <strong>ΔF</strong> — <em>девиация частоты</em> (частотный сдвиг от номинальной несущей гетеродина).
-            </p>
-            <div style="background: rgba(0, 0, 0, 0.4); padding: 0.75rem 1.25rem; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.95rem; color: #34d399; margin: 0.75rem 0;">
-              s<sub>FSK</sub>(t) = A<sub>c</sub> · cos[2π (F<sub>c</sub> + (2·d(t) - 1)·ΔF) t]
+
+            ${mb('\\text{Бит 0} \\longrightarrow f_0 = F_c - \\Delta F, \\qquad \\text{Бит 1} \\longrightarrow f_1 = F_c + \\Delta F', 'fsk-block')}
+
+            <div class="theory-formula-breakdown">
+              <div class="breakdown-item"><strong>${m('F_c')}</strong> — центральная несущая (например, 20 кГц)</div>
+              <div class="breakdown-item"><strong>${m('\\Delta F')}</strong> — девиация (сдвиг частоты, например, 3.5 кГц)</div>
             </div>
+
             <p class="theory-p" style="font-size: 0.88rem;">
-              <strong>Спектр FSK:</strong> На анализаторе спектра четко наблюдаются два выраженных энергетических пика на частотах <code>f<sub>0</sub></code> и <code>f<sub>1</sub></code>. Ширина спектра по правилу Карсона: <code>B ≈ 2 · (ΔF + R<sub>b</sub>)</code>.
-              <br/>
-              <strong>Преимущества:</strong> Постоянная огибающая позволяет использовать энергоэффективные нелинейные усилители мощности класса С без искажений; высокая помехоустойчивость к амплитудным шумам и затуханиям.
-              <br/>
-              <strong>Применение:</strong> Телефонные модемы (Bell 103/202, V.21/V.23), промышленная телеметрия HART, передатчики Caller ID, радиоканалы Bluetooth LE (GFSK), системы учета энергоресурсов LoRa/FSK.
+              <strong>Сколько места занимает в эфире (Формула Карсона):</strong>
             </p>
+            ${mb('B_{\\text{FSK}} \\approx 2 \\cdot (\\Delta F + R_b)', 'fsk-block')}
+            <p class="theory-p" style="font-size: 0.88rem;">
+              <em>Пример:</em> Если сдвиг частоты ${m('\\Delta F = 3.5')} кГц, а скорость ${m('R_b = 0.8')} кбит/с, полоса составит ${m('B \\approx 2 \\times (3.5 + 0.8) = 8.6')} кГц.
+            </p>
+            <p class="theory-p" style="font-size: 0.88rem;">
+              <strong>Почему FSK надежнее ASK?</strong> В FSK амплитуда волны ВСЕГДА постоянна: ${m('A = \\text{const}')}! Сигнал не выключается ни на секунду. Даже если сигнал в эфире ослабнет из-за препятствий, приемник безошибочно определит частоту.<br/>
+              <strong>Где встречается:</strong> Bluetooth Low Energy (фитнес-браслеты, наушники), датчики умного дома LoRa, классические телефонные модемы, радиостанции.
+            </p>
+
+            <div class="theory-workbench-tip tip-emerald">
+              🎯 <strong>На стенде:</strong> Переключите модулятор в <code>FSK</code> и посмотрите на <em>Спектрограф</em>! Вы увидите два высоких «столбика» (на частотах $f_0$ и $f_1$). Подвигайте ползунок девиации $\\Delta F$ — столбики начнут разъезжаться в стороны!
+            </div>
           </div>
 
           <!-- 2.3 PSK -->
           <div style="background: rgba(8, 12, 20, 0.5); padding: 1.25rem; border-radius: var(--radius-md); border-left: 4px solid var(--accent-purple); border-top: 1px solid var(--bg-card-border); border-right: 1px solid var(--bg-card-border); border-bottom: 1px solid var(--bg-card-border);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
               <h3 style="color: var(--accent-purple); font-size: 1.1rem; font-weight: 700;">
-                Фазовая манипуляция (ФМн / PSK — Phase Shift Keying)
+                2.3. PSK (ФМн) — «Принцип переворота волны»
               </h3>
-              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-family: var(--font-mono); font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px;">BPSK / 2-PSK</span>
+              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; font-family: var(--font-mono); font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px;">BPSK</span>
             </div>
+
             <p class="theory-p">
-              При двоичной фазовой манипуляции (<strong>BPSK — Binary PSK</strong>) амплитуда и частота несущей неизменны, а начальная фаза колебания скачкообразно изменяется на <strong>180° (π радиан)</strong> при смене логического состояния передаваемого бита:
+              <strong>Правило:</strong> Частота и амплитуда вообще не меняются! Но когда передается бит «1», волна <strong>мгновенно переворачивается вверх ногами</strong> (скачок фазы на ${m('180^\\circ')} или ${m('\\pi')} радиан).
             </p>
-            <ul style="margin-left: 1.5rem; color: var(--text-secondary); line-height: 1.8; margin-bottom: 0.75rem; font-size: 0.9rem;">
-              <li>Символ «0»: фаза <code>φ = 0°</code> → <code>s(t) = +A<sub>c</sub> cos(2π F<sub>c</sub> t)</code></li>
-              <li>Символ «1»: фаза <code>φ = 180° (π)</code> → <code>s(t) = A<sub>c</sub> cos(2π F<sub>c</sub> t + π) = -A<sub>c</sub> cos(2π F<sub>c</sub> t)</code></li>
-            </ul>
-            <div style="background: rgba(0, 0, 0, 0.4); padding: 0.75rem 1.25rem; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.95rem; color: #c084fc; margin: 0.75rem 0;">
-              s<sub>BPSK</sub>(t) = (-1)<sup>d(t)</sup> · A<sub>c</sub> · cos(2π F<sub>c</sub> t)
-            </div>
+
+            ${mb('\\text{Бит 0} \\longrightarrow +A_c \\cos(2\\pi F_c t), \\qquad \\text{Бит 1} \\longrightarrow -A_c \\cos(2\\pi F_c t)', 'psk-block')}
+
             <p class="theory-p" style="font-size: 0.88rem;">
-              <strong>Осциллограмма и спектр BPSK:</strong> На осциллограмме в моменты смены битов виден резкий разворот синусоиды (инверсия фазы на 180° при переходе через ноль). В спектре непрерывная несущая <code>F<sub>c</sub></code> отсутствует (подавлена при равновероятных битах), а мощность сосредоточена в информационной полосе шириной <code>B ≈ 2 · R<sub>b</sub></code>.
-              <br/>
-              <strong>Преимущества:</strong> BPSK обладает <strong>наивысшей помехоустойчивостью</strong> среди всех методов двоичной модуляции. При заданном отношении сигнал/шум (E<sub>b</sub>/N<sub>0</sub>) BPSK обеспечивает минимальную вероятность битовой ошибки (BER).
-              <br/>
-              <strong>Применение:</strong> Спутниковая навигация (GPS / ГЛОНАСС), глубокий космический радиоканал (NASA Deep Space Network), стандарты Wi-Fi (IEEE 802.11b/g на базовой скорости), сотовая связь 3G/4G/5G, кабельные модемы DOCSIS.
+              Компактно математики записывают это как умножение на знак плюс или минус:
             </p>
+            ${mb('s_{\\text{BPSK}}(t) = (\\pm 1) \\cdot A_c \\cos(2\\pi F_c t)', 'psk-block')}
+
+            <p class="theory-p" style="font-size: 0.88rem;">
+              <strong>Сколько места занимает в эфире:</strong>
+            </p>
+            ${mb('B_{\\text{BPSK}} \\approx 2 \\cdot R_b', 'psk-block')}
+
+            <p class="theory-p" style="font-size: 0.88rem;">
+              <strong>Почему BPSK — мировой чемпион по надежности?</strong> Разница между плюс-волной ($+1$) и перевернутой минус-волной ($-1$) — максимально возможная в природе (дистанция равна 2). Перевернутую синусоиду невозможно перепутать с прямой даже среди сильнейших шумов космоса!<br/>
+              <strong>Где встречается:</strong> Спутники GPS и ГЛОНАСС, связь NASA с марсоходами на Марсе, Wi-Fi и сети 4G/5G (служебные сигналы синхронизации).
+            </p>
+
+            <div class="theory-workbench-tip tip-purple">
+              🎯 <strong>На стенде:</strong> В режиме <code>PSK</code> откройте осциллограф на весь экран (двойным кликом). Найдите границу, где бит 0 сменяется битом 1: синусоида в этой точке резко ломается и разворачивается в обратную сторону!
+            </div>
           </div>
         </div>
       </div>
@@ -122,60 +238,60 @@ export function renderTheory() {
       <!-- Section 3: Comparative Analysis Table -->
       <div class="theory-section">
         <h2 class="theory-heading">
-          3. Сравнительная характеристика аналоговых модуляций и цифровых манипуляций
+          3. Шпаргалка: Быстрое сравнение всех типов модуляции
         </h2>
         <div style="overflow-x: auto;">
           <table class="theory-code-table">
             <thead>
               <tr>
-                <th>Тип сигнала</th>
-                <th>Модулируемый параметр</th>
-                <th>Ширина спектра (B)</th>
-                <th>Помехоустойчивость</th>
-                <th>Сложность детектора</th>
-                <th>Типовое применение</th>
+                <th>Тип</th>
+                <th>Что меняем в волне?</th>
+                <th>Аналогия из жизни</th>
+                <th>Сколько места в эфире?</th>
+                <th>Помехозащита</th>
+                <th>Где применяется</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><strong>DSB-FC</strong> (AM)</td>
-                <td>Амплитуда A(t)</td>
-                <td>2 · F<sub>m</sub></td>
-                <td>Низкая</td>
-                <td>Очень простая (диодный пиковый детектор)</td>
-                <td>ДВ/СВ/КВ радиовещание, авиация (118-137 МГц)</td>
+                <td><strong>AM (DSB)</strong></td>
+                <td>Амплитуду ${m('A(t)')}</td>
+                <td>Громкоговоритель</td>
+                <td>${m('\\Delta F = 2 \\cdot F_m')}</td>
+                <td>Слабая (хрипит при грозе)</td>
+                <td>Радиовещание, авиация</td>
               </tr>
               <tr>
-                <td><strong>SSB</strong> (USB/LSB)</td>
-                <td>Амплитуда одной боковой</td>
-                <td>F<sub>m</sub> (в 2 раза уже!)</td>
+                <td><strong>SSB</strong></td>
+                <td>Одну боковую полосу</td>
+                <td>Экономный шепот</td>
+                <td>${m('\\Delta F = F_m')} (в 2 раза уже!)</td>
                 <td>Средняя</td>
-                <td>Высокая (требует точного генератора несущей)</td>
-                <td>КВ любительская, морская и военная радиосвязь</td>
+                <td>Морская связь, КВ-радиолюбители</td>
               </tr>
               <tr>
-                <td><strong>ASK</strong> (АМн / OOK)</td>
-                <td>Амплитуда импульсов</td>
-                <td>≈ 2 · R<sub>b</sub></td>
-                <td>Низкая (чувствительна к затуханию)</td>
-                <td>Простая (детектор уровня / компаратор)</td>
-                <td>RFID метки, брелоки авто, оптические каналы связи</td>
+                <td><strong>ASK</strong></td>
+                <td>Вкл / Выкл амплитуду</td>
+                <td>Мигающий фонарик</td>
+                <td>${m('B \\approx 2 \\cdot R_b')}</td>
+                <td>Слабая</td>
+                <td>Шлагбаумы, NFC, брелоки авто</td>
               </tr>
               <tr>
-                <td><strong>FSK</strong> (ЧМн / 2-FSK)</td>
-                <td>Частота: f<sub>0</sub> и f<sub>1</sub></td>
-                <td>2·(ΔF + R<sub>b</sub>)</td>
-                <td>Высокая (амплитудные шумы не влияют)</td>
-                <td>Средняя (частотный дискриминатор / ФАПЧ)</td>
-                <td>Телефонные модемы, Bluetooth LE, радиореле, LoRa</td>
+                <td><strong>FSK</strong></td>
+                <td>Частоту (${m('f_0')} и ${m('f_1')})</td>
+                <td>Два свистка разного тона</td>
+                <td>${m('B \\approx 2(\\Delta F + R_b)')}</td>
+                <td>Хорошая (${m('A = \\text{const}')})</td>
+                <td>Bluetooth, LoRa, модемы</td>
               </tr>
               <tr>
-                <td><strong>PSK</strong> (ФМн / BPSK)</td>
-                <td>Начальная фаза (0° / 180°)</td>
-                <td>≈ 2 · R<sub>b</sub></td>
-                <td><strong>Максимальная</strong> (эталон помехоустойчивости)</td>
-                <td>Повышенная (когерентный синхронный детектор)</td>
-                <td>Спутниковая связь, GPS/ГЛОНАСС, Wi-Fi, 4G/5G, ZigBee</td>
+                <td><strong>PSK (BPSK)</strong></td>
+                <td>Фазу (${m('0^\\circ')} или ${m('180^\\circ')})</td>
+                <td>Переворот волны с ног на голову</td>
+                <td>${m('B \\approx 2 \\cdot R_b')}</td>
+                <td><strong>Максимальная в мире</strong></td>
+                <td>GPS, спутники, Wi-Fi, 4G/5G</td>
               </tr>
             </tbody>
           </table>
@@ -185,31 +301,41 @@ export function renderTheory() {
       <!-- Section 4: Circuit Block Architecture -->
       <div class="theory-section">
         <h2 class="theory-heading">
-          4. Функциональные блоки схемотехнического конструктора
+          4. Из каких «кирпичиков» строится тракт связи
         </h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;">
-          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
-            <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Источник сообщения (Source)</h4>
+        <p class="theory-p">
+          В виртуальной лаборатории вы собираете полноценный радиоприемопередатчик из 5 ключевых узлов:
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.15rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.4rem;">1. Источник (Source)</h4>
             <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-              Генерирует первичный информационный сигнал: <strong>Аналоговый тон (Fm)</strong>, <strong>Двухтональную речь</strong>, либо <strong>Цифровую битовую последовательность</strong> (поток нулей и единиц заданной скорости передачи Rb).
+              <strong>«Кто говорит»:</strong> Ваш голос, чистый тон ${m('F_m')} или генератор двоичных бит ${m('d(t)')}.
             </p>
           </div>
-          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
-            <h4 style="color: var(--accent-purple); margin-bottom: 0.5rem;">Несущая (Oscillator)</h4>
+          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.15rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+            <h4 style="color: var(--accent-purple); margin-bottom: 0.4rem;">2. Несущая (Oscillator)</h4>
             <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-              Кварцевый высокочастотный генератор гармонической несущей волны частоты F<sub>c</sub> и амплитуды A<sub>c</sub>, задающий рабочую частоту радиоканала в эфире.
+              <strong>«Поезд»:</strong> Высокочастотный кварцевый генератор рабочей частоты ${m('F_c')} (20 кГц), на которую садится сигнал.
             </p>
           </div>
-          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
-            <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Модулятор / Манипулятор</h4>
+          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.15rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.4rem;">3. Модулятор (Modulator)</h4>
             <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-              Универсальный радиочастотный смеситель/ключ. Осуществляет аналоговое перемножение (AM, DSB, SSB) либо цифровую коммутацию амплитуды (ASK), частоты (FSK) или фазы (PSK).
+              <strong>«Станция посадки»:</strong> Перемножает или переключает волну, накладывая звук или биты на несущую.
             </p>
           </div>
-          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
-            <h4 style="color: var(--accent-emerald); margin-bottom: 0.5rem;">Полосовой фильтр канала</h4>
+          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.15rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+            <h4 style="color: var(--accent-emerald); margin-bottom: 0.4rem;">4. Фильтр эфира (Filter)</h4>
             <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
-              Моделирует физическую линию связи: ограничивает полосу частот (ΔF) и вносит аддитивный белый гауссов шум (AWGN), имитируя реальные помехи в эфире.
+              <strong>«Туннель с помехами»:</strong> Ограничивает полосу пропускания канала и подмешивает шум эфира.
+            </p>
+          </div>
+          <div style="background: rgba(8, 12, 20, 0.4); padding: 1.15rem; border-radius: var(--radius-md); border: 1px solid var(--bg-card-border);">
+            <h4 style="color: #f59e0b; margin-bottom: 0.4rem;">5. Приемник / Детектор</h4>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+              <strong>«Динамик слушателя»:</strong> Снимает модуляцию и восстанавливает исходный чистый звук или биты.
             </p>
           </div>
         </div>

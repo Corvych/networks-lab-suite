@@ -306,6 +306,10 @@ export function createLab1() {
         });
         tabPanes[target].classList.add('active');
 
+        if (target !== 'sim' && workbench && workbench.isFullscreen) {
+          workbench.exitFullscreen();
+        }
+
         if (target === 'sim') {
           setTimeout(() => {
             if (workbench) {
