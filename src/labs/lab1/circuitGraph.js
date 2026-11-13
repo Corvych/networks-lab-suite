@@ -279,10 +279,13 @@ export class CircuitGraph {
 
         const calcAtten = (f) => {
           if (!filterNode) return 1.0;
-          const bw = filterNode.params.filterBandwidth || 6000;
+          const bw = Math.max(500, filterNode.params.filterBandwidth || 6000);
           const dist = Math.abs(fc - f);
-          if (dist <= bw / 2) return 1.0;
-          return Math.max(0.04, 1.0 - (dist - bw / 2) / 2000);
+          // Steep 4th-order Butterworth bandpass filter response curve
+          // Cutoff (-3 dB) is at dist = bw / 2
+          const ratio = (2 * dist) / bw;
+          const atten = 1.0 / Math.sqrt(1 + Math.pow(ratio, 6));
+          return Math.max(0.02, atten);
         };
 
         const mode = modNode.params.mode || 'dsb-fc';
@@ -328,6 +331,51 @@ export class CircuitGraph {
     }
 
     return [];
+  }
+
+  getFilterInfo(nodeId, portId = 'in') {
+    const node = this.nodes.get(nodeId);
+    if (!node) return null;
+
+    let filterNode = null;
+    if (node.type === 'filter') {
+      filterNode = node;
+    } else {
+      const inWire = this.getInputWire(nodeId, portId);
+      if (inWire) {
+        const src = this.nodes.get(inWire.fromNode);
+        if (src && src.type === 'filter') {
+          filterNode = src;
+        }
+      }
+    }
+
+    if (!filterNode) return null;
+
+    // Determine carrier center frequency
+    let fc = 20000;
+    const wireMod = this.getInputWire(filterNode.id, 'filter-in');
+    if (wireMod) {
+      const srcNode = this.nodes.get(wireMod.fromNode);
+      if (srcNode) {
+        if (srcNode.type === 'oscillator') {
+          fc = srcNode.params.fc || 20000;
+        } else if (srcNode.type === 'modulator') {
+          const wireCarrier = this.getInputWire(srcNode.id, 'mod-in-carrier');
+          if (wireCarrier) {
+            const osc = this.nodes.get(wireCarrier.fromNode);
+            if (osc) fc = osc.params.fc || 20000;
+          }
+        }
+      }
+    }
+
+    return {
+      filterNode,
+      bw: filterNode.params.filterBandwidth || 6000,
+      noise: filterNode.params.noise || 0,
+      centerFreq: fc
+    };
   }
 
   subscribe(listener) {

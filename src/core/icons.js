@@ -118,5 +118,92 @@ export const icons = {
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
     <polyline points="7 10 12 15 17 10"></polyline>
     <line x1="12" y1="15" x2="12" y2="3"></line>
+  </svg>`,
+
+  // Schematic telecom block icons for beginner clarity
+  speechUser: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="8" cy="7" r="3.5"></circle>
+    <path d="M2 19a6 6 0 0 1 12 0"></path>
+    <path d="M15 8.5a3 3 0 0 1 0 5"></path>
+    <path d="M18 6.5a6.5 6.5 0 0 1 0 9"></path>
+    <path d="M21 4.5a10 10 0 0 1 0 13"></path>
+  </svg>`,
+
+  soundTone: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="6" cy="17" r="3"></circle>
+    <line x1="9" y1="17" x2="9" y2="4"></line>
+    <polygon points="9 4 19 2 19 6 9 8" fill="currentColor"></polygon>
+    <path d="M13 13a3 3 0 0 1 3-3"></path>
+    <path d="M13 17a6 6 0 0 1 6-6"></path>
+  </svg>`,
+
+  binaryBits: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="13" rx="2"></rect>
+    <line x1="1" y1="19" x2="23" y2="19"></line>
+    <line x1="8" y1="16" x2="6" y2="19"></line>
+    <line x1="16" y1="16" x2="18" y2="19"></line>
+    <circle cx="6.5" cy="9.5" r="1.5"></circle>
+    <line x1="10.5" y1="7.5" x2="10.5" y2="11.5"></line>
+    <circle cx="14.5" cy="9.5" r="1.5"></circle>
+    <line x1="18.5" y1="7.5" x2="18.5" y2="11.5"></line>
+  </svg>`,
+
+  videoCamera: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="6" width="13" height="12" rx="2"></rect>
+    <polygon points="15 10 22 6 22 18 15 14"></polygon>
+    <circle cx="8" cy="12" r="2.5"></circle>
+  </svg>`,
+
+  radioTower: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="8" x2="12" y2="21"></line>
+    <path d="M7 21l5-12 5 12"></path>
+    <line x1="8.5" y1="17.5" x2="15.5" y2="17.5"></line>
+    <line x1="10" y1="13.5" x2="14" y2="13.5"></line>
+    <circle cx="12" cy="7" r="2" fill="currentColor"></circle>
+    <path d="M7.5 4.5a6 6 0 0 0 0 5"></path>
+    <path d="M16.5 4.5a6 6 0 0 1 0 5"></path>
+    <path d="M4.5 2a10.5 10.5 0 0 0 0 10"></path>
+    <path d="M19.5 2a10.5 10.5 0 0 1 0 10"></path>
+  </svg>`,
+
+  modulatorMixer: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="7"></circle>
+    <line x1="7.5" y1="7.5" x2="16.5" y2="16.5"></line>
+    <line x1="16.5" y1="7.5" x2="7.5" y2="16.5"></line>
+    <line x1="2" y1="12" x2="5" y2="12"></line>
+    <line x1="12" y1="2" x2="12" y2="5"></line>
+    <line x1="19" y1="12" x2="22" y2="12"></line>
+  </svg>`,
+
+  bandpassFilter: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="18" rx="2"></rect>
+    <path d="M4 17h3c1 0 2-10 5-10s4 10 5 10h3"></path>
+    <line x1="9" y1="5" x2="9" y2="19" stroke-dasharray="2 2" stroke-width="1.2"></line>
+    <line x1="15" y1="5" x2="15" y2="19" stroke-dasharray="2 2" stroke-width="1.2"></line>
+  </svg>`,
+
+  oscilloscopeScreen: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="3" width="20" height="16" rx="2"></rect>
+    <line x1="2" y1="11" x2="22" y2="11" stroke-dasharray="2 2" stroke-width="1"></line>
+    <line x1="12" y1="3" x2="12" y2="19" stroke-dasharray="2 2" stroke-width="1"></line>
+    <path d="M4 11c2-6 4-6 6 0s4 6 6 0 2-4 4-2" stroke-width="2"></path>
+    <circle cx="6" cy="21.5" r="1" fill="currentColor"></circle>
+    <circle cx="18" cy="21.5" r="1" fill="currentColor"></circle>
+  </svg>`,
+
+  spectrographFft: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="2 4 2 20 22 20"></polyline>
+    <line x1="7" y1="20" x2="7" y2="13" stroke-width="2"></line>
+    <circle cx="7" cy="12" r="1.5" fill="currentColor"></circle>
+    <line x1="12" y1="20" x2="12" y2="6" stroke-width="2.5"></line>
+    <circle cx="12" cy="5" r="1.8" fill="currentColor"></circle>
+    <line x1="17" y1="20" x2="17" y2="13" stroke-width="2"></line>
+    <circle cx="17" cy="12" r="1.5" fill="currentColor"></circle>
+  </svg>`,
+
+  speakerAudio: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="11 4 6 8 2 8 2 16 6 16 11 20 11 4"></polygon>
+    <path d="M15 8.5a5 5 0 0 1 0 7"></path>
+    <path d="M18.5 5a9.5 9.5 0 0 1 0 14"></path>
   </svg>`
 };

@@ -1504,7 +1504,11 @@ body {
 /* Draggable Circuit Node with Neon Glowing Outline */
 .circuit-node {
   position: absolute;
-  width: 250px;
+  width: 280px;
+  min-width: 250px;
+  min-height: 180px;
+  max-width: 850px;
+  max-height: 750px;
   background: rgba(10, 16, 28, 0.92);
   border: 2px solid var(--node-border, rgba(0, 240, 255, 0.45));
   border-radius: var(--radius-md);
@@ -1515,7 +1519,16 @@ body {
   backdrop-filter: blur(16px);
   z-index: 5;
   cursor: grab;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, width 0.18s cubic-bezier(0.16, 1, 0.3, 1), height 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.circuit-node.resizing,
+.circuit-node.dragging {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
 }
 
 /* Node Glow Borders by Node Type */
@@ -1574,19 +1587,86 @@ body {
   transform: scale(1.02);
 }
 
+.circuit-node.resizing {
+  z-index: 30;
+  border-color: var(--node-border);
+  box-shadow: 
+    0 0 36px var(--node-border),
+    inset 0 0 20px rgba(255, 255, 255, 0.1),
+    0 24px 50px rgba(0, 0, 0, 0.95);
+  user-select: none;
+}
+
+/* Node Resize Handles */
+.node-resize-handle {
+  position: absolute;
+  z-index: 15;
+  user-select: none;
+}
+
+.node-resize-handle.node-resize-se {
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: se-resize;
+  border-bottom-right-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.node-resize-handle.node-resize-se::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--node-border, rgba(0, 240, 255, 0.5));
+  border-bottom: 2px solid var(--node-border, rgba(0, 240, 255, 0.5));
+  border-radius: 1px;
+  transition: all 0.15s ease;
+}
+
+.node-resize-handle.node-resize-se:hover::after,
+.circuit-node.resizing .node-resize-handle.node-resize-se::after {
+  border-color: #ffffff;
+  transform: scale(1.3);
+  box-shadow: 1px 1px 4px var(--node-border, var(--accent-cyan));
+}
+
+.node-resize-handle.node-resize-e {
+  right: -3px;
+  top: 36px;
+  bottom: 18px;
+  width: 7px;
+  cursor: e-resize;
+}
+
+.node-resize-handle.node-resize-s {
+  bottom: -3px;
+  left: 18px;
+  right: 18px;
+  height: 7px;
+  cursor: s-resize;
+}
+
 /* Port Sockets (BNC Jacks for modular constructor) */
 .port-socket {
   position: absolute;
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #090d16;
-  border: 2px solid var(--socket-color, var(--accent-cyan));
+  background: #070c18;
+  border: 2.5px solid var(--socket-color, var(--accent-cyan));
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
+  z-index: 12;
+  margin-top: -11px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.85), 0 0 7px var(--socket-color, var(--accent-cyan));
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   user-select: none;
 }
@@ -1736,40 +1816,181 @@ body {
 }
 
 .circuit-node-header {
-  padding: 0.65rem 0.85rem;
+  padding: 0.55rem 0.95rem;
   background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.node-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .node-title {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.node-title svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.node-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .node-badge {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-family: var(--font-mono);
-  padding: 0.15rem 0.4rem;
+  padding: 0.1rem 0.35rem;
   border-radius: var(--radius-sm);
-  background: rgba(0, 240, 255, 0.15);
+  background: rgba(0, 240, 255, 0.12);
   color: var(--accent-cyan);
   font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.node-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* Compact connected size pill [ - | + ] */
+.node-size-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.node-size-pill .node-btn-size {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 18px;
+  height: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.node-size-pill .node-btn-size:first-child {
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.node-size-pill .node-btn-size:hover {
+  background: rgba(0, 240, 255, 0.2);
+  color: var(--accent-cyan);
 }
 
 .circuit-node-body {
-  padding: 0.85rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  flex: 1;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+/* Schematic Faceplate Screen on Top of Block */
+.node-schematic-screen {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  min-height: 70px;
+  background: radial-gradient(circle at 50% 50%, #061122 0%, #02060f 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  box-sizing: border-box;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.node-schematic-screen.instrument-screen {
+  height: 115px;
+  background: #040810;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.node-schematic-svg-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.node-schematic-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Parameters Panel Underneath the Schematic */
+.node-params-panel {
+  padding: 1rem 1.35rem 1.5rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  box-sizing: border-box;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+
+.node-params-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.node-params-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.node-params-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
 }
 
 .node-control-row {
@@ -2120,7 +2341,16 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 105px;
+  max-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.dock-preview-title svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .dock-preview-badge {
@@ -2136,7 +2366,7 @@ body {
 .dock-preview-screen {
   flex: 1;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 0 0 5px 5px;
   display: flex;
   align-items: center;
@@ -2188,6 +2418,15 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.dock-card-name svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .dock-card-desc {
@@ -2371,6 +2610,11 @@ body {
   color: var(--accent-cyan);
 }
 
+#wb-preset-select option {
+  background: #09101d;
+  color: #f1f5f9;
+}
+
 /* Transformed Surface */
 .workbench-canvas-surface {
   position: absolute;
@@ -2397,44 +2641,51 @@ body {
   width: 100%;
   height: 100%;
   z-index: 5;
+  pointer-events: none;
 }
 
 .node-btn-delete {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 1.15rem;
+  width: 20px;
+  height: 20px;
+  font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
   border-radius: 4px;
-  padding: 0.1rem 0.35rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s;
 }
 
 .node-btn-delete:hover {
   color: #f43f5e;
-  background: rgba(244, 63, 94, 0.15);
+  background: rgba(244, 63, 94, 0.18);
 }
 
 .node-btn-expand {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 1rem;
+  width: 20px;
+  height: 20px;
+  font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
   border-radius: 4px;
-  padding: 0.15rem 0.35rem;
-  transition: all 0.15s;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s;
 }
 
 .node-btn-expand:hover {
   color: var(--accent-cyan);
   background: rgba(0, 240, 255, 0.18);
-  transform: scale(1.15);
 }
 
 .instrument-node-canvas {
@@ -2509,6 +2760,15 @@ body {
   font-size: 1.05rem;
   font-weight: 800;
   color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.modal-instrument-title svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .modal-header-right {
@@ -2759,9 +3019,41 @@ body {
   margin: 0.25rem 0;
 }
 
+.cm-shortcut-badge {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-weight: 500;
+  margin-left: auto;
+}
+
 /* Interactive Cable Hover Feedback */
 .cable-rendered {
-  cursor: context-menu;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.cable-rendered * {
+  cursor: pointer;
+}
+
+.cable-rendered .cable-hit-area,
+.cable-rendered .cable-main-path,
+.cable-rendered .cable-glow-path {
+  pointer-events: stroke;
+}
+
+.cable-rendered .cable-endpoint {
+  pointer-events: all;
+}
+
+.cable-rendered .cable-select-dash {
+  display: none;
+  pointer-events: none;
 }
 
 .cable-rendered:hover .cable-main-path {
@@ -2772,5 +3064,246 @@ body {
 .cable-rendered:hover .cable-glow-path {
   stroke-opacity: 0.6;
   stroke-width: 10;
+}
+
+/* Cable Selected State */
+.cable-rendered.is-selected {
+  cursor: pointer;
+}
+
+.cable-rendered.is-selected .cable-select-dash {
+  display: block;
+  stroke: #ffffff;
+  stroke-width: 2.2;
+  stroke-dasharray: 6 5;
+  animation: cableSelectDashMarch 0.7s linear infinite;
+  filter: drop-shadow(0 0 4px #ffffff);
+}
+
+@keyframes cableSelectDashMarch {
+  0% { stroke-dashoffset: 22; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.cable-rendered.is-selected .cable-main-path {
+  stroke-width: 4;
+  filter: drop-shadow(0 0 8px var(--wire-color, #00f0ff)) drop-shadow(0 0 14px #ffffff);
+}
+
+.cable-rendered.is-selected .cable-glow-path {
+  stroke-opacity: 0.85;
+  stroke-width: 14;
+  filter: drop-shadow(0 0 12px var(--wire-color, #00f0ff));
+}
+
+.cable-rendered.is-selected .cable-endpoint {
+  r: 6.5;
+  stroke: #ffffff;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px #ffffff);
+}
+
+/* Custom Lab Selector / Dropdown in Blocks */
+.custom-dropdown {
+  position: relative;
+  width: 100%;
+  user-select: none;
+}
+
+.custom-dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: rgba(13, 21, 37, 0.85);
+  border: 1px solid rgba(0, 240, 255, 0.28);
+  border-radius: 5px;
+  padding: 0.35rem 0.6rem;
+  color: var(--text-primary);
+  font-size: 0.74rem;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+  box-sizing: border-box;
+}
+
+.custom-dropdown-trigger:hover {
+  background: rgba(0, 240, 255, 0.09);
+  border-color: rgba(0, 240, 255, 0.55);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.2), inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.custom-dropdown.is-open .custom-dropdown-trigger {
+  border-color: #00f0ff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+  background: rgba(9, 16, 29, 0.98);
+}
+
+.custom-dropdown-current {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-dropdown-icon {
+  font-size: 0.88rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.custom-dropdown-label {
+  font-weight: 600;
+  color: #f1f5f9;
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-dropdown-arrow {
+  font-size: 0.72rem;
+  color: var(--accent-cyan);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.custom-dropdown.is-open .custom-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu Container */
+.custom-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #060c18;
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.9), 0 0 18px rgba(0, 240, 255, 0.25);
+  z-index: 100;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: none;
+  flex-direction: column;
+  padding: 0.25rem 0;
+  backdrop-filter: blur(14px);
+}
+
+.custom-dropdown.is-open .custom-dropdown-menu {
+  display: flex;
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.custom-dropdown-menu::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.35);
+  border-radius: 4px;
+}
+
+/* Group Header */
+.custom-dropdown-group-title {
+  padding: 0.35rem 0.65rem 0.2rem 0.65rem;
+  font-size: 0.58rem;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 0.2rem;
+}
+
+.custom-dropdown-group-title:first-child {
+  margin-top: 0;
+}
+
+/* Option item */
+.custom-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  border-left: 2px solid transparent;
+}
+
+.custom-dropdown-item:hover {
+  background: rgba(0, 240, 255, 0.12);
+  border-left-color: #00f0ff;
+}
+
+.custom-dropdown-item.is-active {
+  background: rgba(0, 240, 255, 0.2);
+  border-left-color: #00f0ff;
+}
+
+.custom-dropdown-item-main {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.custom-dropdown-item-texts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.custom-dropdown-item-title {
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.custom-dropdown-item-desc {
+  font-size: 0.61rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.custom-dropdown-item-badge {
+  font-size: 0.58rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+}
+
+.custom-dropdown-item.is-active .custom-dropdown-item-badge {
+  background: rgba(0, 240, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Elevate node above neighboring blocks when dropdown is open */
+.circuit-node.has-open-dropdown {
+  z-index: 45 !important;
+}
+
+.circuit-node.has-open-dropdown .node-params-panel {
+  overflow: visible !important;
 }
 

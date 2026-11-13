@@ -1,6 +1,44 @@
 import { CircuitGraph } from './circuitGraph.js';
 import { icons } from '../../core/icons.js';
 
+/**
+ * Human-understandable schematic metadata for signal sources
+ * Dynamically switches icon & labels based on the active signal type
+ */
+export function getSourceMeta(sourceType) {
+  switch (sourceType) {
+    case 'audio_dual':
+      return {
+        icon: icons.speechUser,
+        title: 'Источник',
+        badge: 'РЕЧЬ',
+        badgeColor: '#00f0ff'
+      };
+    case 'digital_bits':
+      return {
+        icon: icons.binaryBits,
+        title: 'Источник',
+        badge: 'DIGITAL',
+        badgeColor: '#00f0ff'
+      };
+    case 'video_step':
+      return {
+        icon: icons.videoCamera,
+        title: 'Источник',
+        badge: 'ВИДЕО',
+        badgeColor: '#38bdf8'
+      };
+    case 'audio_single':
+    default:
+      return {
+        icon: icons.soundTone,
+        title: 'Источник',
+        badge: 'ТОН',
+        badgeColor: '#00f0ff'
+      };
+  }
+}
+
 export class CircuitWorkbench {
   constructor(containerElement, options = {}) {
     this.container = containerElement;
@@ -41,6 +79,7 @@ export class CircuitWorkbench {
     this.spectroScaleV = 3.0;
     this.spectroScaleMode = 'linear'; // 'linear' or 'db'
     this.spectroShowEnvelope = true; // continuous curve & envelope between peaks
+    this.selectedWireId = null; // Currently clicked / selected cable wire
     this.escKeyHandler = null;
     this.docClickHandler = null;
 
@@ -130,15 +169,22 @@ export class CircuitWorkbench {
             <div class="dock-card" draggable="true" data-type="source" title="Перетащите блок на схему">
               <div class="dock-card-preview" style="--preview-border: #00f0ff; --preview-glow: rgba(0,240,255,0.25);">
                 <div class="dock-preview-header">
-                  <span class="dock-preview-title">Источник сообщения</span>
+                  <span class="dock-preview-title">${icons.speechUser} Источник</span>
                   <span class="dock-preview-badge" style="color: #00f0ff;">НЧ</span>
                 </div>
                 <div class="dock-preview-screen">
                   <svg viewBox="0 0 150 48" class="dock-preview-svg">
                     <line x1="0" y1="24" x2="150" y2="24" stroke="rgba(0,240,255,0.15)" stroke-dasharray="2 3"/>
-                    <path d="M 8 24 Q 20 6 32 24 T 56 24 L 66 24 L 66 10 L 82 10 L 82 38 L 98 38 L 98 10 L 114 10 L 114 24 L 142 24" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/>
-                    <text x="10" y="44" fill="rgba(0,240,255,0.8)" font-size="8" font-family="monospace">Fm: 1.0k</text>
-                    <text x="96" y="44" fill="#38bdf8" font-size="8" font-family="monospace">1 0 1</text>
+                    <!-- Schematic person speaking emitting message wave -->
+                    <g transform="translate(6, 12) scale(0.6)" stroke="#00f0ff" fill="none" stroke-width="1.8">
+                      <circle cx="8" cy="7" r="3.5"/>
+                      <path d="M2 19a6 6 0 0 1 12 0"/>
+                      <path d="M15 8.5a3 3 0 0 1 0 4"/>
+                      <path d="M18 6.5a6.5 6.5 0 0 1 0 7.5"/>
+                    </g>
+                    <path d="M 22 24 Q 32 8 42 24 T 62 24 L 72 24 L 72 12 L 86 12 L 86 36 L 100 36 L 100 12 L 114 12 L 114 24 L 142 24" fill="none" stroke="#00f0ff" stroke-width="1.8" stroke-linecap="round"/>
+                    <text x="22" y="44" fill="rgba(0,240,255,0.85)" font-size="7.5" font-family="monospace">Речь/Тон</text>
+                    <text x="96" y="44" fill="#38bdf8" font-size="7.5" font-family="monospace">1 0 1</text>
                   </svg>
                   <span class="dock-preview-socket" style="right: -4px; top: 50%; transform: translateY(-50%); --socket-color: #00f0ff;" title="ВЫХОД"></span>
                 </div>
@@ -146,8 +192,8 @@ export class CircuitWorkbench {
               <div class="dock-card-footer">
                 <span class="dock-card-drag-handle">⠿</span>
                 <div class="dock-card-body">
-                  <span class="dock-card-name">Источник сообщения</span>
-                  <span class="dock-card-desc">Тон / Речь / Биты</span>
+                  <span class="dock-card-name">${icons.speechUser} Источник сообщения</span>
+                  <span class="dock-card-desc">🗣 Речь · 🎵 Тон · 💻 Биты</span>
                 </div>
               </div>
             </div>
@@ -156,14 +202,22 @@ export class CircuitWorkbench {
             <div class="dock-card" draggable="true" data-type="oscillator" title="Перетащите блок на схему">
               <div class="dock-card-preview" style="--preview-border: #a855f7; --preview-glow: rgba(168,85,247,0.25);">
                 <div class="dock-preview-header">
-                  <span class="dock-preview-title">Несущая</span>
+                  <span class="dock-preview-title">${icons.radioTower} Несущая</span>
                   <span class="dock-preview-badge" style="color: #a855f7;">ВЧ</span>
                 </div>
                 <div class="dock-preview-screen">
                   <svg viewBox="0 0 150 48" class="dock-preview-svg">
                     <line x1="0" y1="24" x2="150" y2="24" stroke="rgba(168,85,247,0.15)" stroke-dasharray="2 3"/>
-                    <path d="M 6 24 Q 10 10 14 24 T 22 24 T 30 24 T 38 24 T 46 24 T 54 24 T 62 24 T 70 24 T 78 24 T 86 24 T 94 24 T 102 24 T 110 24 T 118 24 T 126 24 T 134 24 T 142 24" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
-                    <text x="10" y="44" fill="#a855f7" font-size="8" font-family="monospace" font-weight="700">Fc: 20.0 кГц (ВЧ)</text>
+                    <!-- Radio tower sending carrier wave -->
+                    <g transform="translate(6, 12) scale(0.6)" stroke="#a855f7" fill="none" stroke-width="1.8">
+                      <line x1="12" y1="8" x2="12" y2="21"></line>
+                      <path d="M7 21l5-12 5 12"></path>
+                      <circle cx="12" cy="7" r="2" fill="#a855f7"></circle>
+                      <path d="M7.5 4.5a6 6 0 0 0 0 5"></path>
+                      <path d="M16.5 4.5a6 6 0 0 1 0 5"></path>
+                    </g>
+                    <path d="M 22 24 Q 26 10 30 24 T 38 24 T 46 24 T 54 24 T 62 24 T 70 24 T 78 24 T 86 24 T 94 24 T 102 24 T 110 24 T 118 24 T 126 24 T 134 24 T 142 24" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
+                    <text x="22" y="44" fill="#a855f7" font-size="7.5" font-family="monospace" font-weight="700">Fc: 20.0 кГц (Радионесущая)</text>
                   </svg>
                   <span class="dock-preview-socket" style="right: -4px; top: 50%; transform: translateY(-50%); --socket-color: #a855f7;" title="RF ВЫХОД"></span>
                 </div>
@@ -171,8 +225,8 @@ export class CircuitWorkbench {
               <div class="dock-card-footer">
                 <span class="dock-card-drag-handle">⠿</span>
                 <div class="dock-card-body">
-                  <span class="dock-card-name">Несущая</span>
-                  <span class="dock-card-desc">ВЧ генератор (Fc)</span>
+                  <span class="dock-card-name">${icons.radioTower} Несущая</span>
+                  <span class="dock-card-desc">📡 Радиогенератор (Fc)</span>
                 </div>
               </div>
             </div>
@@ -181,7 +235,7 @@ export class CircuitWorkbench {
             <div class="dock-card" draggable="true" data-type="modulator" title="Перетащите блок на схему">
               <div class="dock-card-preview" style="--preview-border: #38bdf8; --preview-glow: rgba(56,189,248,0.25);">
                 <div class="dock-preview-header">
-                  <span class="dock-preview-title">Модулятор</span>
+                  <span class="dock-preview-title">${icons.modulatorMixer} Модулятор</span>
                   <span class="dock-preview-badge" style="color: #38bdf8;">MOD</span>
                 </div>
                 <div class="dock-preview-screen">
@@ -203,8 +257,8 @@ export class CircuitWorkbench {
               <div class="dock-card-footer">
                 <span class="dock-card-drag-handle">⠿</span>
                 <div class="dock-card-body">
-                  <span class="dock-card-name">Модулятор</span>
-                  <span class="dock-card-desc">AM, SSB, ASK, FSK, PSK</span>
+                  <span class="dock-card-name">${icons.modulatorMixer} Модулятор</span>
+                  <span class="dock-card-desc">⨂ Наложение речи на несущую</span>
                 </div>
               </div>
             </div>
@@ -213,7 +267,7 @@ export class CircuitWorkbench {
             <div class="dock-card" draggable="true" data-type="filter" title="Перетащите блок на схему">
               <div class="dock-card-preview" style="--preview-border: #10b981; --preview-glow: rgba(16,185,129,0.25);">
                 <div class="dock-preview-header">
-                  <span class="dock-preview-title">Полосовой фильтр</span>
+                  <span class="dock-preview-title">${icons.bandpassFilter} Полосовой фильтр</span>
                   <span class="dock-preview-badge" style="color: #10b981;">BPF</span>
                 </div>
                 <div class="dock-preview-screen">
@@ -232,8 +286,8 @@ export class CircuitWorkbench {
               <div class="dock-card-footer">
                 <span class="dock-card-drag-handle">⠿</span>
                 <div class="dock-card-body">
-                  <span class="dock-card-name">Полосовой фильтр</span>
-                  <span class="dock-card-desc">Ширина полосы + шум</span>
+                  <span class="dock-card-name">${icons.bandpassFilter} Полосовой фильтр</span>
+                  <span class="dock-card-desc">🎯 Фильтрация шумов полосы ΔF</span>
                 </div>
               </div>
             </div>
@@ -242,7 +296,7 @@ export class CircuitWorkbench {
             <div class="dock-card" draggable="true" data-type="oscilloscope" title="Перетащите блок на схему">
               <div class="dock-card-preview" style="--preview-border: #00f0ff; --preview-glow: rgba(0,240,255,0.25);">
                 <div class="dock-preview-header">
-                  <span class="dock-preview-title">Осциллограф</span>
+                  <span class="dock-preview-title">${icons.oscilloscopeScreen} Осциллограф</span>
                   <span class="dock-preview-badge" style="color: #00f0ff;">OSC</span>
                 </div>
                 <div class="dock-preview-screen">
@@ -262,8 +316,8 @@ export class CircuitWorkbench {
               <div class="dock-card-footer">
                 <span class="dock-card-drag-handle">⠿</span>
                 <div class="dock-card-body">
-                  <span class="dock-card-name">Осциллограф</span>
-                  <span class="dock-card-desc">Временной график s(t)</span>
+                  <span class="dock-card-name">${icons.oscilloscopeScreen} Осциллограф</span>
+                  <span class="dock-card-desc">📈 Форма сигнала во времени s(t)</span>
                 </div>
               </div>
             </div>
@@ -272,7 +326,7 @@ export class CircuitWorkbench {
             <div class="dock-card" draggable="true" data-type="spectrograph" title="Перетащите блок на схему">
               <div class="dock-card-preview" style="--preview-border: #a855f7; --preview-glow: rgba(168,85,247,0.25);">
                 <div class="dock-preview-header">
-                  <span class="dock-preview-title">Спектрограф</span>
+                  <span class="dock-preview-title">${icons.spectrographFft} Спектрограф</span>
                   <span class="dock-preview-badge" style="color: #a855f7;">FFT</span>
                 </div>
                 <div class="dock-preview-screen">
@@ -296,8 +350,8 @@ export class CircuitWorkbench {
               <div class="dock-card-footer">
                 <span class="dock-card-drag-handle">⠿</span>
                 <div class="dock-card-body">
-                  <span class="dock-card-name">Спектрограф</span>
-                  <span class="dock-card-desc">Частотный спектр FFT</span>
+                  <span class="dock-card-name">${icons.spectrographFft} Спектрограф</span>
+                  <span class="dock-card-desc">📊 Частотный спектр (FFT)</span>
                 </div>
               </div>
             </div>
@@ -306,7 +360,7 @@ export class CircuitWorkbench {
             <div class="dock-card" draggable="true" data-type="receiver" title="Перетащите блок на схему">
               <div class="dock-card-preview" style="--preview-border: #f59e0b; --preview-glow: rgba(245,158,11,0.25);">
                 <div class="dock-preview-header">
-                  <span class="dock-preview-title">Приемник / Детектор</span>
+                  <span class="dock-preview-title">${icons.speakerAudio} Приемник / Детектор</span>
                   <span class="dock-preview-badge" style="color: #f59e0b;">RX</span>
                 </div>
                 <div class="dock-preview-screen">
@@ -329,8 +383,8 @@ export class CircuitWorkbench {
               <div class="dock-card-footer">
                 <span class="dock-card-drag-handle">⠿</span>
                 <div class="dock-card-body">
-                  <span class="dock-card-name">Приемник / Детектор</span>
-                  <span class="dock-card-desc">Демодуляция и звук</span>
+                  <span class="dock-card-name">${icons.speakerAudio} Приемник / Детектор</span>
+                  <span class="dock-card-desc">🔊 Восстановление звука / речи</span>
                 </div>
               </div>
             </div>
@@ -402,7 +456,9 @@ export class CircuitWorkbench {
   }
 
   setupInitialPreset() {
-    this.loadPreset('am');
+    const sel = this.container.querySelector('#wb-preset-select');
+    const val = sel ? sel.value : 'am';
+    this.loadPreset(val);
   }
 
   // Universal preset loader for all modulation and keying modes
@@ -412,11 +468,11 @@ export class CircuitWorkbench {
 
     if (presetType === 'am') {
       const s1 = this.createNode('source', 30, 40, { fm: 1000, am: 1.0, sourceType: 'audio_single' });
-      const o1 = this.createNode('oscillator', 30, 290, { fc: 20000, ac: 2.0 });
-      const m1 = this.createNode('modulator', 360, 160, { mode: 'dsb-fc', modIndex: 0.8 });
-      const f1 = this.createNode('filter', 680, 160, { filterBandwidth: 6000, noise: 0 });
-      const osc1 = this.createNode('oscilloscope', 1010, 30);
-      const spec1 = this.createNode('spectrograph', 1010, 280);
+      const o1 = this.createNode('oscillator', 30, 360, { fc: 20000, ac: 2.0 });
+      const m1 = this.createNode('modulator', 380, 160, { mode: 'dsb-fc', modIndex: 0.8 });
+      const f1 = this.createNode('filter', 730, 160, { filterBandwidth: 6000, noise: 0 });
+      const osc1 = this.createNode('oscilloscope', 1080, 30);
+      const spec1 = this.createNode('spectrograph', 1080, 350);
 
       this.graph.connect(s1.id, 'out', m1.id, 'mod-in-audio', '#00f0ff');
       this.graph.connect(o1.id, 'out', m1.id, 'mod-in-carrier', '#a855f7');
@@ -425,11 +481,11 @@ export class CircuitWorkbench {
       this.graph.connect(f1.id, 'filter-out', spec1.id, 'in', '#10b981');
     } else if (presetType === 'ssb') {
       const s1 = this.createNode('source', 30, 40, { fm: 1200, am: 1.0, sourceType: 'audio_single' });
-      const o1 = this.createNode('oscillator', 30, 290, { fc: 20000, ac: 2.0 });
-      const m1 = this.createNode('modulator', 360, 160, { mode: 'ssb-usb' });
-      const f1 = this.createNode('filter', 680, 160, { filterBandwidth: 3000, noise: 0 });
-      const osc1 = this.createNode('oscilloscope', 1010, 30);
-      const spec1 = this.createNode('spectrograph', 1010, 280);
+      const o1 = this.createNode('oscillator', 30, 360, { fc: 20000, ac: 2.0 });
+      const m1 = this.createNode('modulator', 380, 160, { mode: 'ssb-usb' });
+      const f1 = this.createNode('filter', 730, 160, { filterBandwidth: 3000, noise: 0 });
+      const osc1 = this.createNode('oscilloscope', 1080, 30);
+      const spec1 = this.createNode('spectrograph', 1080, 350);
 
       this.graph.connect(s1.id, 'out', m1.id, 'mod-in-audio', '#00f0ff');
       this.graph.connect(o1.id, 'out', m1.id, 'mod-in-carrier', '#a855f7');
@@ -439,12 +495,12 @@ export class CircuitWorkbench {
     } else if (presetType === 'ask') {
       // Amplitude Shift Keying (АМн)
       const s1 = this.createNode('source', 30, 40, { sourceType: 'digital_bits', bitPattern: '10110010', bitRate: 800, am: 1.0 });
-      const o1 = this.createNode('oscillator', 30, 310, { fc: 20000, ac: 2.0 });
-      const m1 = this.createNode('modulator', 360, 160, { mode: 'ask', askLowRatio: 0.05 });
-      const f1 = this.createNode('filter', 680, 160, { filterBandwidth: 10000, noise: 0 });
-      const osc1 = this.createNode('oscilloscope', 1010, 30);
-      const spec1 = this.createNode('spectrograph', 1010, 280);
-      const rec1 = this.createNode('receiver', 680, 410);
+      const o1 = this.createNode('oscillator', 30, 420, { fc: 20000, ac: 2.0 });
+      const m1 = this.createNode('modulator', 380, 180, { mode: 'ask', askLowRatio: 0.05 });
+      const f1 = this.createNode('filter', 730, 180, { filterBandwidth: 10000, noise: 0 });
+      const osc1 = this.createNode('oscilloscope', 1080, 30);
+      const spec1 = this.createNode('spectrograph', 1080, 350);
+      const rec1 = this.createNode('receiver', 730, 500);
 
       this.graph.connect(s1.id, 'out', m1.id, 'mod-in-audio', '#00f0ff');
       this.graph.connect(o1.id, 'out', m1.id, 'mod-in-carrier', '#a855f7');
@@ -455,12 +511,12 @@ export class CircuitWorkbench {
     } else if (presetType === 'fsk') {
       // Frequency Shift Keying (ЧМн)
       const s1 = this.createNode('source', 30, 40, { sourceType: 'digital_bits', bitPattern: '10110010', bitRate: 800, am: 1.0 });
-      const o1 = this.createNode('oscillator', 30, 310, { fc: 20000, ac: 2.0 });
-      const m1 = this.createNode('modulator', 360, 160, { mode: 'fsk', fskDeltaF: 3500 });
-      const f1 = this.createNode('filter', 680, 160, { filterBandwidth: 14000, noise: 0 });
-      const osc1 = this.createNode('oscilloscope', 1010, 30);
-      const spec1 = this.createNode('spectrograph', 1010, 280);
-      const rec1 = this.createNode('receiver', 680, 410);
+      const o1 = this.createNode('oscillator', 30, 420, { fc: 20000, ac: 2.0 });
+      const m1 = this.createNode('modulator', 380, 180, { mode: 'fsk', fskDeltaF: 3500 });
+      const f1 = this.createNode('filter', 730, 180, { filterBandwidth: 14000, noise: 0 });
+      const osc1 = this.createNode('oscilloscope', 1080, 30);
+      const spec1 = this.createNode('spectrograph', 1080, 350);
+      const rec1 = this.createNode('receiver', 730, 500);
 
       this.graph.connect(s1.id, 'out', m1.id, 'mod-in-audio', '#00f0ff');
       this.graph.connect(o1.id, 'out', m1.id, 'mod-in-carrier', '#a855f7');
@@ -471,12 +527,12 @@ export class CircuitWorkbench {
     } else if (presetType === 'psk') {
       // Phase Shift Keying (ФМн / BPSK)
       const s1 = this.createNode('source', 30, 40, { sourceType: 'digital_bits', bitPattern: '10110010', bitRate: 800, am: 1.0 });
-      const o1 = this.createNode('oscillator', 30, 310, { fc: 20000, ac: 2.0 });
-      const m1 = this.createNode('modulator', 360, 160, { mode: 'psk' });
-      const f1 = this.createNode('filter', 680, 160, { filterBandwidth: 10000, noise: 0 });
-      const osc1 = this.createNode('oscilloscope', 1010, 30);
-      const spec1 = this.createNode('spectrograph', 1010, 280);
-      const rec1 = this.createNode('receiver', 680, 410);
+      const o1 = this.createNode('oscillator', 30, 420, { fc: 20000, ac: 2.0 });
+      const m1 = this.createNode('modulator', 380, 180, { mode: 'psk' });
+      const f1 = this.createNode('filter', 730, 180, { filterBandwidth: 10000, noise: 0 });
+      const osc1 = this.createNode('oscilloscope', 1080, 30);
+      const spec1 = this.createNode('spectrograph', 1080, 350);
+      const rec1 = this.createNode('receiver', 730, 500);
 
       this.graph.connect(s1.id, 'out', m1.id, 'mod-in-audio', '#00f0ff');
       this.graph.connect(o1.id, 'out', m1.id, 'mod-in-carrier', '#a855f7');
@@ -495,6 +551,219 @@ export class CircuitWorkbench {
     this.updateEmptyState();
   }
 
+  getNodeDefaultSize(type) {
+    const defaultSizes = {
+      source: { width: 280, height: 280 },
+      oscillator: { width: 280, height: 265 },
+      modulator: { width: 290, height: 290 },
+      filter: { width: 280, height: 265 },
+      receiver: { width: 270, height: 220 },
+      oscilloscope: { width: 310, height: 275 },
+      spectrograph: { width: 310, height: 275 }
+    };
+    return defaultSizes[type] || { width: 280, height: 270 };
+  }
+
+  getMinAllowedDimensions(node, el) {
+    const type = node ? node.type : 'source';
+
+    // 1. Calculate Header Height
+    const header = el?.querySelector('.circuit-node-header');
+    const headerH = header ? header.offsetHeight : 38;
+
+    // 2. Calculate Schematic Screen Height
+    const schematic = el?.querySelector('.node-schematic-screen');
+    let schematicH = 80;
+    if (schematic) {
+      schematicH = schematic.offsetHeight || (type === 'modulator' ? 85 : (type === 'oscilloscope' || type === 'spectrograph' ? 115 : 80));
+    }
+
+    // 3. Calculate Parameters Panel Height with generous padding
+    let paramsContentH = 0;
+    const paramsPanel = el?.querySelector('.node-params-panel');
+
+    if (paramsPanel) {
+      let itemsH = 0;
+      let count = 0;
+      Array.from(paramsPanel.children).forEach(child => {
+        if (child.style.display === 'none' || child.hidden) return;
+        const h = child.offsetHeight > 0 ? child.offsetHeight : 44;
+        itemsH += h;
+        count++;
+      });
+      // 14px gap between rows, 48px total vertical padding (18px top + 30px bottom)
+      const gaps = Math.max(0, count - 1) * 14;
+      paramsContentH = itemsH + gaps + 48;
+    } else {
+      let expectedRows = 2;
+      if (type === 'source' && node?.params?.sourceType === 'digital_bits') {
+        expectedRows = 3;
+      }
+      paramsContentH = expectedRows * 44 + (expectedRows - 1) * 14 + 48;
+    }
+
+    const minHeight = headerH + schematicH + paramsContentH + 6;
+
+    // 4. Minimum Width with generous side padding (indented from left/right borders)
+    let minWidth = 265;
+    if (header) {
+      const titleGroup = header.querySelector('.node-title-group');
+      const actions = header.querySelector('.node-header-actions');
+      if (titleGroup && actions) {
+        minWidth = Math.max(minWidth, titleGroup.scrollWidth + actions.scrollWidth + 50);
+      }
+    }
+    if (type === 'oscilloscope' || type === 'spectrograph') {
+      minWidth = Math.max(minWidth, 295);
+    }
+
+    return {
+      width: Math.ceil(minWidth),
+      height: Math.ceil(minHeight)
+    };
+  }
+
+  autoExpandNodeIfNeeded(node, el, animate = false) {
+    if (!el || !node) return false;
+    const min = this.getMinAllowedDimensions(node, el);
+    let targetW = node.width || el.offsetWidth || min.width;
+    let targetH = node.height || el.offsetHeight || min.height;
+    let expanded = false;
+
+    // Only expand if current dimensions are smaller than strictly required by active visible content
+    if (targetH < min.height) {
+      targetH = min.height;
+      expanded = true;
+    }
+    if (targetW < min.width) {
+      targetW = min.width;
+      expanded = true;
+    }
+
+    if (expanded) {
+      this.setNodeSize(node, el, targetW, targetH, animate);
+      return true;
+    }
+    return false;
+  }
+
+  autoFitNodeSize(node, el) {
+    const min = this.getMinAllowedDimensions(node, el);
+    this.setNodeSize(node, el, min.width, min.height, true);
+  }
+
+  setNodeSize(node, el, width, height, animate = false) {
+    node.width = width;
+    node.height = height;
+    el.style.width = `${width}px`;
+    el.style.height = `${height}px`;
+
+    // Sync canvas internal resolution
+    const canvas = el.querySelector(`#canvas-${node.id}`);
+    if (canvas) {
+      const wrapper = canvas.parentElement;
+      if (wrapper && wrapper.clientWidth > 0 && wrapper.clientHeight > 0) {
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+      }
+    }
+
+    this.updateWires();
+
+    if (animate) {
+      const startTime = performance.now();
+      const updateLoop = (now) => {
+        this.updateWires();
+        if (now - startTime < 180) {
+          requestAnimationFrame(updateLoop);
+        }
+      };
+      requestAnimationFrame(updateLoop);
+    }
+  }
+
+  stepNodeSize(node, el, direction) {
+    const min = this.getMinAllowedDimensions(node, el);
+    const maxW = 800;
+    const maxH = 650;
+
+    const currentW = node.width || el.offsetWidth || 240;
+    const currentH = node.height || el.offsetHeight || 215;
+
+    let newW, newH;
+    if (direction < 0) {
+      newW = Math.max(min.width, currentW - 25);
+      newH = Math.max(min.height, currentH - 25);
+    } else {
+      newW = Math.min(maxW, currentW + 25);
+      newH = Math.min(maxH, currentH + 25);
+    }
+
+    this.setNodeSize(node, el, newW, newH, true);
+  }
+
+  resetNodeSize(node, el) {
+    this.autoFitNodeSize(node, el);
+  }
+
+  setupNodeResize(el, node) {
+    const handles = el.querySelectorAll('.node-resize-handle');
+    handles.forEach(handle => {
+      handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const dir = handle.dataset.resizeDir || 'se';
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = node.width || el.offsetWidth;
+        const startH = node.height || el.offsetHeight;
+
+        el.classList.add('resizing');
+        document.body.style.cursor = dir === 'se' ? 'se-resize' : (dir === 'e' ? 'e-resize' : 's-resize');
+        document.body.style.userSelect = 'none';
+
+        const min = this.getMinAllowedDimensions(node, el);
+        const maxW = 800;
+        const maxH = 650;
+
+        const onMouseMove = (moveEvt) => {
+          const dx = (moveEvt.clientX - startX) / this.zoom;
+          const dy = (moveEvt.clientY - startY) / this.zoom;
+
+          let newW = startW;
+          let newH = startH;
+
+          if (dir.includes('e')) {
+            newW = Math.max(min.width, Math.min(maxW, Math.round(startW + dx)));
+          }
+          if (dir.includes('s')) {
+            newH = Math.max(min.height, Math.min(maxH, Math.round(startH + dy)));
+          }
+
+          this.setNodeSize(node, el, newW, newH, false);
+        };
+
+        const onMouseUp = () => {
+          el.classList.remove('resizing');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      // Double-click to auto-fit to content
+      handle.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        this.autoFitNodeSize(node, el);
+      });
+    });
+  }
+
   // Add node of a given type
   createNode(type, x, y, customParams = {}) {
     const id = `node-${type}-${this.nodeCounter++}`;
@@ -508,11 +777,15 @@ export class CircuitWorkbench {
       receiver: {}
     };
 
+    const defSize = this.getNodeDefaultSize(type);
+
     const node = {
       id,
       type,
       x: x !== undefined ? x : 150 + Math.random() * 200,
       y: y !== undefined ? y : 100 + Math.random() * 150,
+      width: defSize.width,
+      height: defSize.height,
       params: { ...(defaultParams[type] || {}), ...customParams }
     };
 
@@ -528,12 +801,391 @@ export class CircuitWorkbench {
     }
   }
 
+  getNodeSchematicSvg(node) {
+    switch (node.type) {
+      case 'source': {
+        const sType = node.params.sourceType || 'audio_single';
+        const fm = node.params.fm || 1000;
+        const bitPattern = node.params.bitPattern || '10110010';
+        const bitRate = node.params.bitRate || 800;
+
+        if (sType === 'audio_dual') {
+          return `
+            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+              <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
+              <!-- Human Speaking Profile -->
+              <g transform="translate(10, 18) scale(0.85)" stroke="#00f0ff" fill="none" stroke-width="1.8">
+                <circle cx="8" cy="7" r="3.5"/>
+                <path d="M2 19a6 6 0 0 1 12 0"/>
+                <path d="M15 8.5a3 3 0 0 1 0 5"/>
+                <path d="M18 6.5a6.5 6.5 0 0 1 0 9"/>
+              </g>
+              <!-- Acoustic Mic Transducer -->
+              <line x1="34" y1="38" x2="44" y2="38" stroke="#00f0ff" stroke-width="1.5"/>
+              <rect x="44" y="31" width="16" height="14" rx="2" fill="rgba(0,240,255,0.15)" stroke="#00f0ff" stroke-width="1.4"/>
+              <text x="52" y="41" fill="#00f0ff" font-size="6.5" font-family="monospace" text-anchor="middle" font-weight="700">MIC</text>
+              <line x1="60" y1="38" x2="70" y2="38" stroke="#00f0ff" stroke-width="1.5"/>
+              <!-- Dual-tone speech envelope wave -->
+              <path d="M 70 38 Q 80 18 90 38 T 110 38 Q 120 23 130 38 T 150 38 Q 160 16 170 38 T 190 38 Q 200 24 210 38 L 240 38" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/>
+              <text x="10" y="68" fill="#38bdf8" font-size="8" font-family="monospace" font-weight="700">ГОЛОС / РЕЧЬ: 300..3400 Гц</text>
+            </svg>
+          `;
+        } else if (sType === 'digital_bits') {
+          return `
+            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+              <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
+              <!-- Computer Data Stream -->
+              <g transform="translate(10, 18) scale(0.85)" stroke="#00f0ff" fill="none" stroke-width="1.6">
+                <rect x="2" y="3" width="20" height="13" rx="2"/>
+                <line x1="1" y1="19" x2="23" y2="19"/>
+                <circle cx="6.5" cy="9.5" r="1.5"/>
+                <line x1="10.5" y1="7.5" x2="10.5" y2="11.5"/>
+                <circle cx="14.5" cy="9.5" r="1.5"/>
+                <line x1="18.5" y1="7.5" x2="18.5" y2="11.5"/>
+              </g>
+              <line x1="34" y1="38" x2="48" y2="38" stroke="#00f0ff" stroke-width="1.5"/>
+              <!-- Binary Square Wave -->
+              <path d="M 48 38 L 60 38 L 60 22 L 80 22 L 80 50 L 102 50 L 102 22 L 126 22 L 126 38 L 148 38 L 148 22 L 170 22 L 170 50 L 192 50 L 192 38 L 240 38" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/>
+              <text x="10" y="68" fill="#38bdf8" font-size="8" font-family="monospace" font-weight="700">БИТЫ: ${bitRate} бит/с · [${bitPattern.slice(0, 8)}]</text>
+            </svg>
+          `;
+        } else if (sType === 'video_step') {
+          return `
+            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+              <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
+              <!-- Video Camera -->
+              <g transform="translate(10, 20) scale(0.85)" stroke="#38bdf8" fill="none" stroke-width="1.8">
+                <rect x="2" y="6" width="13" height="12" rx="2"/>
+                <polygon points="15 10 22 6 22 18 15 14"/>
+              </g>
+              <!-- Video Sawtooth -->
+              <path d="M 36 38 L 56 38 L 80 20 L 80 48 L 110 20 L 110 48 L 140 20 L 140 48 L 170 20 L 170 38 L 240 38" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
+              <text x="10" y="68" fill="#38bdf8" font-size="8" font-family="monospace" font-weight="700">ВИДЕОСИГНАЛ: Строчная развертка</text>
+            </svg>
+          `;
+        } else {
+          // audio_single (Тон)
+          return `
+            <svg viewBox="0 0 240 76" class="node-schematic-svg">
+              <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(0,240,255,0.1)" stroke-dasharray="2 3"/>
+              <!-- Note symbol -->
+              <g transform="translate(10, 20) scale(0.9)" stroke="#00f0ff" fill="none" stroke-width="1.8">
+                <circle cx="6" cy="17" r="3"/>
+                <line x1="9" y1="17" x2="9" y2="4"/>
+                <polygon points="9 4 19 2 19 6 9 8" fill="#00f0ff"/>
+              </g>
+              <line x1="32" y1="38" x2="48" y2="38" stroke="#00f0ff" stroke-width="1.5"/>
+              <circle cx="56" cy="38" r="8" fill="rgba(0,240,255,0.15)" stroke="#00f0ff" stroke-width="1.4"/>
+              <path d="M 51 38 Q 53.5 33 56 38 T 61 38" fill="none" stroke="#00f0ff" stroke-width="1.4"/>
+              <line x1="64" y1="38" x2="74" y2="38" stroke="#00f0ff" stroke-width="1.5"/>
+              <!-- Pure harmonic sine wave -->
+              <path d="M 74 38 Q 88 18 102 38 T 130 38 T 158 38 T 186 38 T 214 38 L 240 38" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/>
+              <text x="10" y="68" fill="#38bdf8" font-size="8" font-family="monospace" font-weight="700">ТОН: Fm = ${fm} Гц (НЧ гармоника)</text>
+            </svg>
+          `;
+        }
+      }
+
+      case 'oscillator': {
+        const fc = (node.params.fc / 1000).toFixed(1);
+        const ac = (node.params.ac).toFixed(1);
+        return `
+          <svg viewBox="0 0 240 76" class="node-schematic-svg">
+            <line x1="0" y1="38" x2="240" y2="38" stroke="rgba(168,85,247,0.12)" stroke-dasharray="2 3"/>
+            <!-- Radio Tower / Antenna -->
+            <g transform="translate(10, 16) scale(0.85)" stroke="#a855f7" fill="none" stroke-width="1.8">
+              <line x1="12" y1="8" x2="12" y2="21"/>
+              <path d="M7 21l5-12 5 12"/>
+              <circle cx="12" cy="7" r="2" fill="#a855f7"/>
+              <path d="M7.5 4.5a6 6 0 0 0 0 5"/>
+              <path d="M16.5 4.5a6 6 0 0 1 0 5"/>
+            </g>
+            <!-- Generator box -->
+            <line x1="36" y1="38" x2="48" y2="38" stroke="#a855f7" stroke-width="1.5"/>
+            <rect x="48" y="27" width="26" height="22" rx="3" fill="rgba(168,85,247,0.18)" stroke="#a855f7" stroke-width="1.4"/>
+            <text x="61" y="41" fill="#c084fc" font-size="7" font-family="monospace" text-anchor="middle" font-weight="700">ВЧ ~</text>
+            <line x1="74" y1="38" x2="86" y2="38" stroke="#a855f7" stroke-width="1.5"/>
+            <!-- Dense RF Sine wave -->
+            <path d="M 86 38 Q 89 22 92 38 T 98 38 T 104 38 T 110 38 T 116 38 T 122 38 T 128 38 T 134 38 T 140 38 T 146 38 T 152 38 T 158 38 T 164 38 T 170 38 T 176 38 T 182 38 T 188 38 T 194 38 T 200 38 T 206 38 T 212 38 T 218 38 T 224 38 T 230 38 L 240 38" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
+            <text x="10" y="68" fill="#c084fc" font-size="8" font-family="monospace" font-weight="700">НЕСУЩАЯ: Fc = ${fc} кГц · Ac = ${ac} В</text>
+          </svg>
+        `;
+      }
+
+      case 'modulator': {
+        const mode = node.params.mode || 'dsb-fc';
+        const modeLabelMap = {
+          'dsb-fc': `АМ (m=${(node.params.modIndex || 0.8).toFixed(2)})`,
+          'dsb-sc': 'DSB-SC (Балансная)',
+          'ssb-usb': 'SSB-USB (Верхняя)',
+          'ssb-lsb': 'SSB-LSB (Нижняя)',
+          'ask': `АМн/ASK (OOK ${Math.round((node.params.askLowRatio || 0.05)*100)}%)`,
+          'fsk': `ЧМн/FSK (ΔF=${((node.params.fskDeltaF || 3000)/1000).toFixed(1)}k)`,
+          'psk': 'ФМн/PSK (BPSK 180°)'
+        };
+        const modeDesc = modeLabelMap[mode] || mode;
+
+        return `
+          <svg viewBox="0 0 240 90" class="node-schematic-svg">
+            <!-- Audio input line -->
+            <line x1="0" y1="26" x2="60" y2="26" stroke="#00f0ff" stroke-width="1.8"/>
+            <path d="M 12 26 Q 22 17 32 26 T 52 26" fill="none" stroke="#00f0ff" stroke-width="1.4"/>
+            <text x="8" y="16" fill="#00f0ff" font-size="7" font-family="monospace">s(t) НЧ</text>
+
+            <!-- Carrier input line -->
+            <line x1="0" y1="64" x2="60" y2="64" stroke="#a855f7" stroke-width="1.8"/>
+            <path d="M 10 64 Q 13 57 16 64 T 22 64 T 28 64 T 34 64 T 40 64 T 46 64 T 52 64" fill="none" stroke="#a855f7" stroke-width="1.4"/>
+            <text x="8" y="78" fill="#a855f7" font-size="7" font-family="monospace">c(t) ВЧ</text>
+
+            <!-- Convergence lines into mixer -->
+            <path d="M 60 26 L 82 40 M 60 64 L 82 50" fill="none" stroke="#64748b" stroke-width="1.4"/>
+
+            <!-- Circular Mixer Multiplier Symbol -->
+            <circle cx="94" cy="45" r="12" fill="#071829" stroke="#38bdf8" stroke-width="1.8"/>
+            <line x1="86" y1="37" x2="102" y2="53" stroke="#38bdf8" stroke-width="1.8"/>
+            <line x1="102" y1="37" x2="86" y2="53" stroke="#38bdf8" stroke-width="1.8"/>
+
+            <!-- Modulated RF output -->
+            <line x1="106" y1="45" x2="120" y2="45" stroke="#38bdf8" stroke-width="1.8"/>
+            <path d="M 120 45 Q 126 26 132 45 T 144 45 Q 150 18 156 45 T 168 45 Q 174 24 180 45 T 192 45 Q 198 32 204 45 T 216 45 T 228 45 L 240 45" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round"/>
+            <text x="116" y="82" fill="#38bdf8" font-size="8" font-family="monospace" font-weight="700">${modeDesc}</text>
+          </svg>
+        `;
+      }
+
+      case 'filter': {
+        const bw = (node.params.filterBandwidth / 1000).toFixed(1);
+        const noise = node.params.noise || 0;
+        return `
+          <svg viewBox="0 0 240 76" class="node-schematic-svg">
+            <line x1="0" y1="38" x2="42" y2="38" stroke="#00f0ff" stroke-width="1.8"/>
+            <!-- Bandpass Resonance Bell -->
+            <path d="M 42 54 L 72 52 Q 102 50 115 16 Q 120 8 125 16 Q 138 50 168 52 L 198 54 Z" fill="rgba(16,185,129,0.2)" stroke="#10b981" stroke-width="2"/>
+            <line x1="106" y1="14" x2="106" y2="54" stroke="rgba(16,185,129,0.7)" stroke-dasharray="2 2"/>
+            <line x1="134" y1="14" x2="134" y2="54" stroke="rgba(16,185,129,0.7)" stroke-dasharray="2 2"/>
+            <text x="120" y="32" fill="#ffffff" font-size="8" font-family="monospace" text-anchor="middle" font-weight="700">ΔF</text>
+            <!-- Filtered Output Line -->
+            <line x1="168" y1="38" x2="240" y2="38" stroke="#10b981" stroke-width="1.8"/>
+            <text x="10" y="68" fill="#10b981" font-size="8" font-family="monospace" font-weight="700">ПОЛОСА: ΔF = ${bw} кГц · Шум: ${noise}%</text>
+          </svg>
+        `;
+      }
+
+      case 'receiver': {
+        return `
+          <svg viewBox="0 0 240 76" class="node-schematic-svg">
+            <line x1="0" y1="38" x2="42" y2="38" stroke="#f59e0b" stroke-width="1.8"/>
+            <!-- Diode detector -->
+            <polygon points="42,26 42,50 60,38" fill="#f59e0b"/>
+            <line x1="60" y1="24" x2="60" y2="52" stroke="#f59e0b" stroke-width="2.5"/>
+            <!-- RC Filter Box -->
+            <line x1="60" y1="38" x2="82" y2="38" stroke="#f59e0b" stroke-width="1.8"/>
+            <rect x="82" y="26" width="36" height="24" rx="3" fill="rgba(245,158,11,0.18)" stroke="#f59e0b" stroke-width="1.4"/>
+            <text x="100" y="41" fill="#f59e0b" font-size="7.5" font-family="monospace" text-anchor="middle" font-weight="700">RC-ФНЧ</text>
+            <!-- Speaker -->
+            <line x1="118" y1="38" x2="142" y2="38" stroke="#f59e0b" stroke-width="1.8"/>
+            <path d="M 142 30 L 154 30 L 168 20 L 168 56 L 154 46 L 142 46 Z" fill="#f59e0b"/>
+            <path d="M 174 30 Q 180 38 174 46 M 182 24 Q 191 38 182 52 M 190 18 Q 202 38 190 58" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"/>
+            <text x="10" y="68" fill="#f59e0b" font-size="8.5" font-family="monospace" font-weight="700">ДЕМОДУЛЯЦИЯ: Восстановление звука</text>
+          </svg>
+        `;
+      }
+
+      default:
+        return '';
+    }
+  }
+
+  updateNodeSchematic(node, el) {
+    const container = el.querySelector(`#schematic-svg-container-${node.id}`);
+    if (container) {
+      container.innerHTML = this.getNodeSchematicSvg(node);
+    }
+  }
+
+  renderSourceTypeCustomSelect(node) {
+    const activeVal = node.params.sourceType || 'audio_single';
+    const options = [
+      { value: 'audio_single', label: 'Тон (1.0 кГц)', desc: 'Чистый гармонический тон', icon: '🎵', badge: '1.0 kHz' },
+      { value: 'audio_dual', label: 'Речь (2 тона)', desc: 'Двухтоновый сигнал 0.8+1.6 кГц', icon: '🗣', badge: 'РЕЧЬ' },
+      { value: 'video_step', label: 'Видеосигнал (Пила)', desc: 'Пилообразный видеоимпульс', icon: '📹', badge: 'ПИЛА' },
+      { value: 'digital_bits', label: 'Цифровой поток (Биты)', desc: 'Последовательность импульсов NRZ', icon: '💻', badge: 'БИТЫ' }
+    ];
+
+    const cur = options.find(o => o.value === activeVal) || options[0];
+
+    const itemsHtml = options.map(o => `
+      <div class="custom-dropdown-item ${o.value === activeVal ? 'is-active' : ''}" data-value="${o.value}">
+        <div class="custom-dropdown-item-main">
+          <span class="custom-dropdown-icon">${o.icon}</span>
+          <div class="custom-dropdown-item-texts">
+            <span class="custom-dropdown-item-title">${o.label}</span>
+            <span class="custom-dropdown-item-desc">${o.desc}</span>
+          </div>
+        </div>
+        <span class="custom-dropdown-item-badge">${o.badge}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="custom-dropdown" data-param="sourceType">
+        <input type="hidden" class="param-input" data-param="sourceType" value="${cur.value}" />
+        <button type="button" class="custom-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="custom-dropdown-current">
+            <span class="custom-dropdown-icon">${cur.icon}</span>
+            <span class="custom-dropdown-label">${cur.label}</span>
+          </span>
+          <span class="custom-dropdown-arrow">▾</span>
+        </button>
+        <div class="custom-dropdown-menu" role="listbox">
+          ${itemsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  renderModulatorModeCustomSelect(node) {
+    const activeVal = node.params.mode || 'dsb-fc';
+    const groups = [
+      {
+        title: 'Аналоговая модуляция',
+        options: [
+          { value: 'dsb-fc', label: 'DSB-FC (AM с несущей)', desc: 'Классическая АМ m=0.8', icon: '⚡', badge: 'AM' },
+          { value: 'dsb-sc', label: 'DSB-SC (Балансная)', desc: 'Подавленная несущая (2 полосы)', icon: '⚡', badge: 'DSB' },
+          { value: 'ssb-usb', label: 'SSB-USB (Верхняя)', desc: 'Однополосная модуляция ВБП', icon: '⚡', badge: 'USB' },
+          { value: 'ssb-lsb', label: 'SSB-LSB (Нижняя)', desc: 'Однополосная модуляция НБП', icon: '⚡', badge: 'LSB' }
+        ]
+      },
+      {
+        title: 'Дискретная манипуляция',
+        options: [
+          { value: 'ask', label: 'АМн / ASK (Амплитудная)', desc: 'Манипуляция амплитуды (OOK)', icon: '📡', badge: 'ASK' },
+          { value: 'fsk', label: 'ЧМн / FSK (Частотная)', desc: 'Манипуляция частоты несущей ΔF', icon: '📡', badge: 'FSK' },
+          { value: 'psk', label: 'ФМн / PSK (Фазовая)', desc: 'BPSK манипуляция фазы (0/180°)', icon: '📡', badge: 'PSK' }
+        ]
+      }
+    ];
+
+    let allOpts = [];
+    groups.forEach(g => { allOpts = allOpts.concat(g.options); });
+    const cur = allOpts.find(o => o.value === activeVal) || allOpts[0];
+
+    const menuHtml = groups.map(g => `
+      <div class="custom-dropdown-group-title">${g.title}</div>
+      ${g.options.map(o => `
+        <div class="custom-dropdown-item ${o.value === activeVal ? 'is-active' : ''}" data-value="${o.value}">
+          <div class="custom-dropdown-item-main">
+            <span class="custom-dropdown-icon">${o.icon}</span>
+            <div class="custom-dropdown-item-texts">
+              <span class="custom-dropdown-item-title">${o.label}</span>
+              <span class="custom-dropdown-item-desc">${o.desc}</span>
+            </div>
+          </div>
+          <span class="custom-dropdown-item-badge">${o.badge}</span>
+        </div>
+      `).join('')}
+    `).join('');
+
+    return `
+      <div class="custom-dropdown" data-param="mode">
+        <input type="hidden" class="param-input" data-param="mode" value="${cur.value}" />
+        <button type="button" class="custom-dropdown-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="custom-dropdown-current">
+            <span class="custom-dropdown-icon">${cur.icon}</span>
+            <span class="custom-dropdown-label">${cur.label}</span>
+          </span>
+          <span class="custom-dropdown-arrow">▾</span>
+        </button>
+        <div class="custom-dropdown-menu" role="listbox">
+          ${menuHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  setupCustomDropdowns(el, node) {
+    el.querySelectorAll('.custom-dropdown').forEach(dropdown => {
+      const trigger = dropdown.querySelector('.custom-dropdown-trigger');
+      const menu = dropdown.querySelector('.custom-dropdown-menu');
+      const hiddenInput = dropdown.querySelector('.param-input');
+
+      if (!trigger || !menu) return;
+
+      // Prevent mousedown on dropdown from initiating node drag
+      dropdown.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasOpen = dropdown.classList.contains('is-open');
+        this.closeAllCustomDropdowns();
+        if (!wasOpen) {
+          dropdown.classList.add('is-open');
+          el.classList.add('has-open-dropdown');
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      menu.querySelectorAll('.custom-dropdown-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = item.dataset.value;
+          const label = item.querySelector('.custom-dropdown-item-title')?.textContent || val;
+          const icon = item.querySelector('.custom-dropdown-icon')?.textContent || '';
+
+          // Update trigger button display
+          const labelEl = dropdown.querySelector('.custom-dropdown-label');
+          const iconEl = dropdown.querySelector('.custom-dropdown-icon');
+          if (labelEl) labelEl.textContent = label;
+          if (iconEl) iconEl.textContent = icon;
+
+          // Update active highlighting in menu
+          menu.querySelectorAll('.custom-dropdown-item').forEach(it => it.classList.remove('is-active'));
+          item.classList.add('is-active');
+
+          // Close dropdown
+          dropdown.classList.remove('is-open');
+          el.classList.remove('has-open-dropdown');
+          trigger.setAttribute('aria-expanded', 'false');
+
+          // Update hidden input & trigger change handling
+          if (hiddenInput) {
+            hiddenInput.value = val;
+            hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        });
+      });
+    });
+  }
+
+  closeAllCustomDropdowns() {
+    this.container.querySelectorAll('.custom-dropdown.is-open').forEach(d => {
+      d.classList.remove('is-open');
+      d.querySelector('.custom-dropdown-trigger')?.setAttribute('aria-expanded', 'false');
+    });
+    this.container.querySelectorAll('.circuit-node.has-open-dropdown').forEach(n => {
+      n.classList.remove('has-open-dropdown');
+    });
+  }
+
   renderNodeElement(node) {
+    const defSize = this.getNodeDefaultSize(node.type);
+    if (!node.width || node.width < defSize.width) node.width = defSize.width;
+    if (!node.height || node.height < defSize.height) node.height = defSize.height;
+
+    // For source with digital_bits, height needs to accommodate the 3 rows + generous padding
+    if (node.type === 'source' && node.params.sourceType === 'digital_bits') {
+      node.height = Math.max(node.height, 340);
+    }
+
     const el = document.createElement('div');
     el.id = node.id;
     el.className = `circuit-node node-type-${node.type}`;
     el.style.left = `${node.x}px`;
     el.style.top = `${node.y}px`;
+    el.style.width = `${node.width}px`;
+    el.style.height = `${node.height}px`;
 
     let bodyHtml = '';
     let headerTitle = '';
@@ -542,72 +1194,88 @@ export class CircuitWorkbench {
 
     switch (node.type) {
       case 'source':
-        headerTitle = `${icons.waveform} Источник сообщения`;
-        badgeLabel = node.params.sourceType === 'digital_bits' ? 'DIGITAL' : 'НЧ';
-        badgeColor = '#00f0ff';
+        const srcMeta = getSourceMeta(node.params.sourceType);
+        headerTitle = `${srcMeta.icon} <span class="node-title-text">${srcMeta.title}</span>`;
+        badgeLabel = srcMeta.badge;
+        badgeColor = srcMeta.badgeColor;
         bodyHtml = `
-          <div class="node-control-row">
-            <label class="node-control-label">Сигнал:</label>
-            <select class="node-select param-input" data-param="sourceType">
-              <option value="audio_single" ${node.params.sourceType === 'audio_single' ? 'selected' : ''}>Тон (1.0 кГц)</option>
-              <option value="audio_dual" ${node.params.sourceType === 'audio_dual' ? 'selected' : ''}>Речь (2 тона)</option>
-              <option value="video_step" ${node.params.sourceType === 'video_step' ? 'selected' : ''}>Видеосигнал (Пила)</option>
-              <option value="digital_bits" ${node.params.sourceType === 'digital_bits' ? 'selected' : ''}>Цифровой поток (Биты)</option>
-            </select>
-          </div>
-          <div class="node-control-row" id="row-source-fm-${node.id}" style="${node.params.sourceType === 'digital_bits' ? 'display:none;' : ''}">
-            <div class="node-control-label">
-              <span>Частота Fm:</span>
-              <span class="node-control-val disp-param-fm">${node.params.fm || 1000} Гц</span>
+          <!-- 1. Schematic Circuit & Signal Display -->
+          <div class="node-schematic-screen" id="schematic-${node.id}">
+            <div class="node-schematic-svg-container" id="schematic-svg-container-${node.id}">
+              ${this.getNodeSchematicSvg(node)}
             </div>
-            <input type="range" class="node-slider param-input" data-param="fm" min="500" max="3000" step="100" value="${node.params.fm || 1000}" />
-          </div>
-          <div class="node-control-row" id="row-source-bits-${node.id}" style="${node.params.sourceType === 'digital_bits' ? '' : 'display:none;'}">
-            <div class="node-control-label">
-              <span>Биты (0/1):</span>
+            <div class="port-socket socket-out" data-node="${node.id}" data-port="out" data-type="out" data-signal="audio" style="--socket-color: #00f0ff; top: 50%;">
+              <span class="port-label-tag">ВЫХОД ДАННЫХ</span>
             </div>
-            <input type="text" class="node-select param-input" data-param="bitPattern" maxlength="16" value="${node.params.bitPattern || '10110010'}" style="font-family: var(--font-mono); letter-spacing: 2px; color: #00f0ff; text-align: center; width: 100%;" />
           </div>
-          <div class="node-control-row" id="row-source-bitrate-${node.id}" style="${node.params.sourceType === 'digital_bits' ? '' : 'display:none;'}">
-            <div class="node-control-label">
-              <span>Скорость Rb:</span>
-              <span class="node-control-val disp-param-bitRate">${node.params.bitRate || 800} бит/с</span>
+
+          <!-- 2. Parameters Underneath -->
+          <div class="node-params-panel">
+            <div class="node-control-row">
+              <label class="node-control-label">Сигнал:</label>
+              ${this.renderSourceTypeCustomSelect(node)}
             </div>
-            <input type="range" class="node-slider param-input" data-param="bitRate" min="200" max="2400" step="100" value="${node.params.bitRate || 800}" />
-          </div>
-          <div class="port-socket socket-out" data-node="${node.id}" data-port="out" data-type="out" data-signal="audio" style="--socket-color: #00f0ff; top: 50%;">
-            <span class="port-label-tag">ВЫХОД ДАННЫХ</span>
+            <div class="node-control-row" id="row-source-fm-${node.id}" style="${node.params.sourceType === 'digital_bits' ? 'display:none;' : ''}">
+              <div class="node-control-label">
+                <span>Частота Fm:</span>
+                <span class="node-control-val disp-param-fm">${node.params.fm || 1000} Гц</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="fm" min="500" max="3000" step="100" value="${node.params.fm || 1000}" />
+            </div>
+            <div class="node-control-row" id="row-source-bits-${node.id}" style="${node.params.sourceType === 'digital_bits' ? '' : 'display:none;'}">
+              <div class="node-control-label">
+                <span>Биты (0/1):</span>
+              </div>
+              <input type="text" class="node-select param-input" data-param="bitPattern" maxlength="16" value="${node.params.bitPattern || '10110010'}" style="font-family: var(--font-mono); letter-spacing: 2px; color: #00f0ff; text-align: center; width: 100%;" />
+            </div>
+            <div class="node-control-row" id="row-source-bitrate-${node.id}" style="${node.params.sourceType === 'digital_bits' ? '' : 'display:none;'}">
+              <div class="node-control-label">
+                <span>Скорость Rb:</span>
+                <span class="node-control-val disp-param-bitRate">${node.params.bitRate || 800} бит/с</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="bitRate" min="200" max="2400" step="100" value="${node.params.bitRate || 800}" />
+            </div>
           </div>
         `;
         break;
 
       case 'oscillator':
-        headerTitle = `${icons.router} Несущая`;
+        headerTitle = `${icons.radioTower} <span class="node-title-text">Несущая</span>`;
         badgeLabel = 'ВЧ';
         badgeColor = '#a855f7';
         bodyHtml = `
-          <div class="node-control-row">
-            <div class="node-control-label">
-              <span>Частота Fc:</span>
-              <span class="node-control-val disp-param-fc">${(node.params.fc / 1000).toFixed(1)} кГц</span>
+          <!-- 1. Schematic Circuit & Carrier Display -->
+          <div class="node-schematic-screen" id="schematic-${node.id}">
+            <div class="node-schematic-svg-container" id="schematic-svg-container-${node.id}">
+              ${this.getNodeSchematicSvg(node)}
             </div>
-            <input type="range" class="node-slider param-input" data-param="fc" min="15000" max="25000" step="500" value="${node.params.fc}" />
-          </div>
-          <div class="node-control-row">
-            <div class="node-control-label">
-              <span>Амплитуда Ac:</span>
-              <span class="node-control-val disp-param-ac">${node.params.ac.toFixed(1)} В</span>
+            <div class="port-socket socket-out" data-node="${node.id}" data-port="out" data-type="out" data-signal="carrier" style="--socket-color: #a855f7; top: 50%;">
+              <span class="port-label-tag">ВЫХОД ВЧ</span>
             </div>
-            <input type="range" class="node-slider param-input" data-param="ac" min="1.0" max="4.0" step="0.5" value="${node.params.ac}" />
           </div>
-          <div class="port-socket socket-out" data-node="${node.id}" data-port="out" data-type="out" data-signal="carrier" style="--socket-color: #a855f7; top: 50%;">
-            <span class="port-label-tag">ВЫХОД ВЧ</span>
+
+          <!-- 2. Parameters Underneath -->
+          <div class="node-params-panel">
+            <div class="node-control-row">
+              <div class="node-control-label">
+                <span>Частота Fc:</span>
+                <span class="node-control-val disp-param-fc">${(node.params.fc / 1000).toFixed(1)} кГц</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="fc" min="15000" max="25000" step="500" value="${node.params.fc}" />
+            </div>
+            <div class="node-control-row">
+              <div class="node-control-label">
+                <span>Амплитуда Ac:</span>
+                <span class="node-control-val disp-param-ac">${node.params.ac.toFixed(1)} В</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="ac" min="1.0" max="4.0" step="0.5" value="${node.params.ac}" />
+            </div>
           </div>
         `;
         break;
 
       case 'modulator':
-        headerTitle = `${icons.terminal} Модулятор / Манипулятор`;
+        headerTitle = `${icons.modulatorMixer} <span class="node-title-text">Модулятор</span>`;
         const modeBadgeMap = {
           'dsb-fc': { label: 'AM', color: '#00f0ff' },
           'dsb-sc': { label: 'DSB', color: '#38bdf8' },
@@ -622,149 +1290,175 @@ export class CircuitWorkbench {
         badgeColor = curBadge.color;
 
         bodyHtml = `
-          <div class="node-control-row">
-            <label class="node-control-label">Режим:</label>
-            <select class="node-select param-input" data-param="mode">
-              <optgroup label="Аналоговая модуляция">
-                <option value="dsb-fc" ${node.params.mode === 'dsb-fc' ? 'selected' : ''}>DSB-FC (AM с несущей)</option>
-                <option value="dsb-sc" ${node.params.mode === 'dsb-sc' ? 'selected' : ''}>DSB-SC (Балансная)</option>
-                <option value="ssb-usb" ${node.params.mode === 'ssb-usb' ? 'selected' : ''}>SSB-USB (Верхняя)</option>
-                <option value="ssb-lsb" ${node.params.mode === 'ssb-lsb' ? 'selected' : ''}>SSB-LSB (Нижняя)</option>
-              </optgroup>
-              <optgroup label="Дискретная манипуляция">
-                <option value="ask" ${node.params.mode === 'ask' ? 'selected' : ''}>АМн / ASK (Амплитудная)</option>
-                <option value="fsk" ${node.params.mode === 'fsk' ? 'selected' : ''}>ЧМн / FSK (Частотная)</option>
-                <option value="psk" ${node.params.mode === 'psk' ? 'selected' : ''}>ФМн / PSK (Фазовая BPSK)</option>
-              </optgroup>
-            </select>
-          </div>
-          <div class="node-control-row" id="row-mod-index-${node.id}" style="${node.params.mode === 'dsb-fc' ? '' : 'display:none;'}">
-            <div class="node-control-label">
-              <span>Глубина m:</span>
-              <span class="node-control-val disp-param-modIndex">${(node.params.modIndex || 0.8).toFixed(2)}</span>
+          <!-- 1. Schematic Circuit & Mixer Display -->
+          <div class="node-schematic-screen" id="schematic-${node.id}" style="height: 90px;">
+            <div class="node-schematic-svg-container" id="schematic-svg-container-${node.id}">
+              ${this.getNodeSchematicSvg(node)}
             </div>
-            <input type="range" class="node-slider param-input" data-param="modIndex" min="0.1" max="1.4" step="0.05" value="${node.params.modIndex || 0.8}" />
-          </div>
-          <div class="node-control-row" id="row-ask-ratio-${node.id}" style="${node.params.mode === 'ask' ? '' : 'display:none;'}">
-            <div class="node-control-label">
-              <span>Уровень 0 (OOK):</span>
-              <span class="node-control-val disp-param-askLowRatio">${Math.round((node.params.askLowRatio !== undefined ? node.params.askLowRatio : 0.05) * 100)}%</span>
+            <div class="port-socket socket-in" data-node="${node.id}" data-port="mod-in-audio" data-type="in" data-accepts="audio" style="--socket-color: #00f0ff; top: 29%;">
+              <span class="port-label-tag">ВХОД ДАННЫЕ</span>
             </div>
-            <input type="range" class="node-slider param-input" data-param="askLowRatio" min="0" max="0.4" step="0.05" value="${node.params.askLowRatio !== undefined ? node.params.askLowRatio : 0.05}" />
-          </div>
-          <div class="node-control-row" id="row-fsk-delta-${node.id}" style="${node.params.mode === 'fsk' ? '' : 'display:none;'}">
-            <div class="node-control-label">
-              <span>Девиация ΔF:</span>
-              <span class="node-control-val disp-param-fskDeltaF">${(((node.params.fskDeltaF || 3000)) / 1000).toFixed(1)} кГц</span>
+            <div class="port-socket socket-in" data-node="${node.id}" data-port="mod-in-carrier" data-type="in" data-accepts="carrier" style="--socket-color: #a855f7; top: 71%;">
+              <span class="port-label-tag">ВХОД ВЧ</span>
             </div>
-            <input type="range" class="node-slider param-input" data-param="fskDeltaF" min="1000" max="6000" step="500" value="${node.params.fskDeltaF || 3000}" />
-          </div>
-          <div class="node-control-row" id="row-psk-info-${node.id}" style="${node.params.mode === 'psk' ? '' : 'display:none;'}">
-            <div style="font-size: 0.72rem; color: #c084fc; line-height: 1.4; background: rgba(168, 85, 247, 0.1); padding: 0.3rem 0.5rem; border-radius: 4px; width: 100%;">
-              Скачок фазы: <strong>180° (π)</strong> при смене бит 0 ⇄ 1
+            <div class="port-socket socket-out" data-node="${node.id}" data-port="rf-out" data-type="out" data-signal="rf" style="--socket-color: #38bdf8; top: 50%;">
+              <span class="port-label-tag">ВЫХОД ВЧ</span>
             </div>
           </div>
-          <div class="port-socket socket-in" data-node="${node.id}" data-port="mod-in-audio" data-type="in" data-accepts="audio" style="--socket-color: #00f0ff; top: 32%;">
-            <span class="port-label-tag">ВХОД ДАННЫЕ</span>
-          </div>
-          <div class="port-socket socket-in" data-node="${node.id}" data-port="mod-in-carrier" data-type="in" data-accepts="carrier" style="--socket-color: #a855f7; top: 72%;">
-            <span class="port-label-tag">ВХОД ВЧ</span>
-          </div>
-          <div class="port-socket socket-out" data-node="${node.id}" data-port="rf-out" data-type="out" data-signal="rf" style="--socket-color: #00f0ff; top: 50%;">
-            <span class="port-label-tag">ВЫХОД ВЧ</span>
+
+          <!-- 2. Parameters Underneath -->
+          <div class="node-params-panel">
+            <div class="node-control-row">
+              <label class="node-control-label">Режим:</label>
+              ${this.renderModulatorModeCustomSelect(node)}
+            </div>
+            <div class="node-control-row" id="row-mod-index-${node.id}" style="${node.params.mode === 'dsb-fc' ? '' : 'display:none;'}">
+              <div class="node-control-label">
+                <span>Глубина m:</span>
+                <span class="node-control-val disp-param-modIndex">${(node.params.modIndex || 0.8).toFixed(2)}</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="modIndex" min="0.1" max="1.4" step="0.05" value="${node.params.modIndex || 0.8}" />
+            </div>
+            <div class="node-control-row" id="row-ask-ratio-${node.id}" style="${node.params.mode === 'ask' ? '' : 'display:none;'}">
+              <div class="node-control-label">
+                <span>Уровень 0 (OOK):</span>
+                <span class="node-control-val disp-param-askLowRatio">${Math.round((node.params.askLowRatio !== undefined ? node.params.askLowRatio : 0.05) * 100)}%</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="askLowRatio" min="0" max="0.4" step="0.05" value="${node.params.askLowRatio !== undefined ? node.params.askLowRatio : 0.05}" />
+            </div>
+            <div class="node-control-row" id="row-fsk-delta-${node.id}" style="${node.params.mode === 'fsk' ? '' : 'display:none;'}">
+              <div class="node-control-label">
+                <span>Девиация ΔF:</span>
+                <span class="node-control-val disp-param-fskDeltaF">${(((node.params.fskDeltaF || 3000)) / 1000).toFixed(1)} кГц</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="fskDeltaF" min="1000" max="6000" step="500" value="${node.params.fskDeltaF || 3000}" />
+            </div>
+            <div class="node-control-row" id="row-psk-info-${node.id}" style="${node.params.mode === 'psk' ? '' : 'display:none;'}">
+              <div style="font-size: 0.72rem; color: #c084fc; line-height: 1.4; background: rgba(168, 85, 247, 0.1); padding: 0.3rem 0.5rem; border-radius: 4px; width: 100%;">
+                Скачок фазы: <strong>180° (π)</strong> при смене бит 0 ⇄ 1
+              </div>
+            </div>
           </div>
         `;
         break;
 
       case 'filter':
-        headerTitle = `${icons.target} Полосовой фильтр`;
+        headerTitle = `${icons.bandpassFilter} <span class="node-title-text">Полосовой фильтр</span>`;
         badgeLabel = 'BPF';
         badgeColor = '#10b981';
         bodyHtml = `
-          <div class="node-control-row">
-            <div class="node-control-label">
-              <span>Полоса ΔF:</span>
-              <span class="node-control-val disp-param-filterBandwidth">${(node.params.filterBandwidth / 1000).toFixed(1)} кГц</span>
+          <!-- 1. Schematic Circuit & Filter Curve Display -->
+          <div class="node-schematic-screen" id="schematic-${node.id}">
+            <div class="node-schematic-svg-container" id="schematic-svg-container-${node.id}">
+              ${this.getNodeSchematicSvg(node)}
             </div>
-            <input type="range" class="node-slider param-input" data-param="filterBandwidth" min="1000" max="18000" step="500" value="${node.params.filterBandwidth}" />
-          </div>
-          <div class="node-control-row">
-            <div class="node-control-label">
-              <span>Шум канала:</span>
-              <span class="node-control-val disp-param-noise">${node.params.noise}%</span>
+            <div class="port-socket socket-in" data-node="${node.id}" data-port="filter-in" data-type="in" data-accepts="rf,rf-filtered,audio,carrier" style="--socket-color: #00f0ff; top: 50%;">
+              <span class="port-label-tag">ВХОД</span>
             </div>
-            <input type="range" class="node-slider param-input" data-param="noise" min="0" max="40" step="5" value="${node.params.noise}" />
+            <div class="port-socket socket-out" data-node="${node.id}" data-port="filter-out" data-type="out" data-signal="rf-filtered" style="--socket-color: #10b981; top: 50%;">
+              <span class="port-label-tag">ВЫХОД</span>
+            </div>
           </div>
-          <div class="port-socket socket-in" data-node="${node.id}" data-port="filter-in" data-type="in" data-accepts="rf,rf-filtered,audio,carrier" style="--socket-color: #00f0ff; top: 50%;">
-            <span class="port-label-tag">ВХОД</span>
-          </div>
-          <div class="port-socket socket-out" data-node="${node.id}" data-port="filter-out" data-type="out" data-signal="rf-filtered" style="--socket-color: #10b981; top: 50%;">
-            <span class="port-label-tag">ВЫХОД</span>
+
+          <!-- 2. Parameters Underneath -->
+          <div class="node-params-panel">
+            <div class="node-control-row">
+              <div class="node-control-label">
+                <span>Полоса ΔF:</span>
+                <span class="node-control-val disp-param-filterBandwidth">${(node.params.filterBandwidth / 1000).toFixed(1)} кГц</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="filterBandwidth" min="1000" max="18000" step="500" value="${node.params.filterBandwidth}" />
+            </div>
+            <div class="node-control-row">
+              <div class="node-control-label">
+                <span>Шум канала:</span>
+                <span class="node-control-val disp-param-noise">${node.params.noise}%</span>
+              </div>
+              <input type="range" class="node-slider param-input" data-param="noise" min="0" max="40" step="5" value="${node.params.noise}" />
+            </div>
           </div>
         `;
         break;
 
       case 'oscilloscope':
-        headerTitle = `${icons.waveform} Осциллограф`;
+        headerTitle = `${icons.oscilloscopeScreen} <span class="node-title-text">Осциллограф</span>`;
         badgeLabel = 'OSC';
         badgeColor = '#00f0ff';
-        el.style.width = '280px';
         bodyHtml = `
-          <div style="background: #040810; border-radius: var(--radius-sm); border: 1px solid rgba(0, 240, 255, 0.2); overflow: hidden; margin-bottom: 0.5rem;">
-            <canvas class="instrument-node-canvas" id="canvas-${node.id}" width="260" height="130" style="width: 100%; height: 130px; display: block;"></canvas>
+          <!-- 1. Schematic Waveform Screen -->
+          <div class="node-schematic-screen instrument-screen" id="schematic-${node.id}">
+            <canvas class="instrument-node-canvas" id="canvas-${node.id}" width="260" height="115" style="width: 100%; height: 100%; display: block;"></canvas>
+            <div class="port-socket socket-in" data-node="${node.id}" data-port="in" data-type="in" data-accepts="audio,carrier,rf,rf-filtered" style="--socket-color: #00f0ff; top: 50%;">
+              <span class="port-label-tag">ВХОД CH1</span>
+            </div>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.35rem;">
-            <span>ВХОД CH1: s(t)</span>
-            <span style="color: var(--accent-cyan); font-family: var(--font-mono);" id="osc-time-label-${node.id}">${(node.params.timeDiv || 2).toFixed(1)} ms</span>
-          </div>
-          <div style="display: flex; gap: 0.25rem; justify-content: flex-end; align-items: center;">
-            <span style="font-size: 0.65rem; color: var(--text-muted); margin-right: 0.2rem;">Развертка:</span>
-            <button class="node-time-btn ${node.params.timeDiv === 1 ? 'active' : ''}" data-t="1" style="font-size: 0.68rem; padding: 0.15rem 0.4rem; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.25); color: #00f0ff; border-radius: 3px; cursor: pointer;">1ms</button>
-            <button class="node-time-btn ${(!node.params.timeDiv || node.params.timeDiv === 2) ? 'active' : ''}" data-t="2" style="font-size: 0.68rem; padding: 0.15rem 0.4rem; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.25); color: #00f0ff; border-radius: 3px; cursor: pointer;">2ms</button>
-            <button class="node-time-btn ${node.params.timeDiv === 4 ? 'active' : ''}" data-t="4" style="font-size: 0.68rem; padding: 0.15rem 0.4rem; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.25); color: #00f0ff; border-radius: 3px; cursor: pointer;">4ms</button>
-          </div>
-          <div class="port-socket socket-in" data-node="${node.id}" data-port="in" data-type="in" data-accepts="audio,carrier,rf,rf-filtered" style="--socket-color: #00f0ff; top: 35%;">
-            <span class="port-label-tag">ВХОД CH1</span>
+
+          <!-- 2. Parameters Underneath -->
+          <div class="node-params-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-muted);">
+              <span>ВХОД CH1: s(t)</span>
+              <span style="color: var(--accent-cyan); font-family: var(--font-mono);" id="osc-time-label-${node.id}">${(node.params.timeDiv || 2).toFixed(1)} ms</span>
+            </div>
+            <div style="display: flex; gap: 0.25rem; justify-content: flex-end; align-items: center;">
+              <span style="font-size: 0.65rem; color: var(--text-muted); margin-right: 0.2rem;">Развертка:</span>
+              <button class="node-time-btn ${node.params.timeDiv === 1 ? 'active' : ''}" data-t="1" style="font-size: 0.68rem; padding: 0.15rem 0.4rem; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.25); color: #00f0ff; border-radius: 3px; cursor: pointer;">1ms</button>
+              <button class="node-time-btn ${(!node.params.timeDiv || node.params.timeDiv === 2) ? 'active' : ''}" data-t="2" style="font-size: 0.68rem; padding: 0.15rem 0.4rem; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.25); color: #00f0ff; border-radius: 3px; cursor: pointer;">2ms</button>
+              <button class="node-time-btn ${node.params.timeDiv === 4 ? 'active' : ''}" data-t="4" style="font-size: 0.68rem; padding: 0.15rem 0.4rem; background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.25); color: #00f0ff; border-radius: 3px; cursor: pointer;">4ms</button>
+            </div>
           </div>
         `;
         break;
 
       case 'spectrograph':
-        headerTitle = `${icons.terminal} Спектрограф`;
+        headerTitle = `${icons.spectrographFft} <span class="node-title-text">Спектрограф</span>`;
         badgeLabel = 'FFT';
         badgeColor = '#a855f7';
-        el.style.width = '290px';
         bodyHtml = `
-          <div style="background: #040810; border-radius: var(--radius-sm); border: 1px solid rgba(168, 85, 247, 0.2); overflow: hidden; margin-bottom: 0.5rem;">
-            <canvas class="instrument-node-canvas" id="canvas-${node.id}" width="270" height="130" style="width: 100%; height: 130px; display: block;"></canvas>
+          <!-- 1. Schematic Spectrum Screen -->
+          <div class="node-schematic-screen instrument-screen" id="schematic-${node.id}">
+            <canvas class="instrument-node-canvas" id="canvas-${node.id}" width="270" height="115" style="width: 100%; height: 100%; display: block;"></canvas>
+            <div class="port-socket socket-in" data-node="${node.id}" data-port="in" data-type="in" data-accepts="audio,carrier,rf,rf-filtered" style="--socket-color: #a855f7; top: 32%;">
+              <span class="port-label-tag">ВХОД CH1</span>
+            </div>
+            <div class="port-socket socket-in" data-node="${node.id}" data-port="in-2" data-type="in" data-accepts="audio,carrier,rf,rf-filtered" style="--socket-color: #00f0ff; top: 68%;">
+              <span class="port-label-tag">ВХОД CH2</span>
+            </div>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-muted);">
-            <span>Диапазон: 0 .. 40 кГц</span>
-            <span style="color: #a855f7; font-family: var(--font-mono);">CH1+CH2 FFT</span>
-          </div>
-          <div class="port-socket socket-in" data-node="${node.id}" data-port="in" data-type="in" data-accepts="audio,carrier,rf,rf-filtered" style="--socket-color: #a855f7; top: 32%;">
-            <span class="port-label-tag">ВХОД CH1</span>
-          </div>
-          <div class="port-socket socket-in" data-node="${node.id}" data-port="in-2" data-type="in" data-accepts="audio,carrier,rf,rf-filtered" style="--socket-color: #00f0ff; top: 68%;">
-            <span class="port-label-tag">ВХОД CH2</span>
+
+          <!-- 2. Parameters Underneath -->
+          <div class="node-params-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-muted);">
+              <span>Диапазон: 0 .. 40 кГц</span>
+              <span style="color: #a855f7; font-family: var(--font-mono);">CH1+CH2 FFT</span>
+            </div>
           </div>
         `;
         break;
 
       case 'receiver':
-        headerTitle = `${icons.server} Приемник / Детектор`;
+        headerTitle = `${icons.speakerAudio} <span class="node-title-text">Приемник</span>`;
         badgeLabel = 'RX';
         badgeColor = '#f59e0b';
         bodyHtml = `
-          <div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 0.4rem;">
-            Детектор сигналов (Огибающая / ЧД / Синхронный BPSK).
+          <!-- 1. Schematic Circuit & Speaker Display -->
+          <div class="node-schematic-screen" id="schematic-${node.id}">
+            <div class="node-schematic-svg-container" id="schematic-svg-container-${node.id}">
+              ${this.getNodeSchematicSvg(node)}
+            </div>
+            <div class="port-socket socket-in" data-node="${node.id}" data-port="in" data-type="in" data-accepts="rf,rf-filtered,audio" style="--socket-color: #f59e0b; top: 50%;">
+              <span class="port-label-tag">ВХОД RF</span>
+            </div>
           </div>
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; background: rgba(0,0,0,0.3); padding: 0.35rem 0.5rem; border-radius: 4px; margin-bottom: 0.4rem;">
-            <span style="color: var(--text-muted);">Статус тракта:</span>
-            <span style="color: #10b981; font-weight: 600;">● Активен</span>
-          </div>
-          <div class="port-socket socket-in" data-node="${node.id}" data-port="in" data-type="in" data-accepts="rf,rf-filtered,audio" style="--socket-color: #10b981; top: 50%;">
-            <span class="port-label-tag">ВХОД RF</span>
+
+          <!-- 2. Parameters Underneath -->
+          <div class="node-params-panel">
+            <div style="font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4;">
+              Амплитудный / частотный / фазовый детектор.
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; background: rgba(0,0,0,0.3); padding: 0.3rem 0.5rem; border-radius: 4px;">
+              <span style="color: var(--text-muted);">Статус тракта:</span>
+              <span style="color: #10b981; font-weight: 600;">● Активен</span>
+            </div>
           </div>
         `;
         break;
@@ -775,18 +1469,28 @@ export class CircuitWorkbench {
 
     el.innerHTML = `
       <div class="circuit-node-header">
-        <div class="node-title">${headerTitle}</div>
-        <div style="display: flex; align-items: center; gap: 0.35rem;">
-          ${(node.type === 'oscilloscope' || node.type === 'spectrograph') ? `
-            <button class="node-btn-expand" data-node-expand="${node.id}" title="Развернуть во всплывающем окне (подробный анализ)">⛶</button>
-          ` : ''}
+        <div class="node-title-group">
+          <div class="node-title">${headerTitle}</div>
           <span class="node-badge" style="color: ${badgeColor};">${badgeLabel}</span>
-          <button class="node-btn-delete" title="Удалить блок" data-node-delete="${node.id}">×</button>
+        </div>
+        <div class="node-header-actions">
+          <div class="node-size-pill" title="Размер блока (− / +). Двойной клик — авторасширение по контенту">
+            <button class="node-btn-size" data-node-shrink="${node.id}" title="Уменьшить блок (Компактнее)">−</button>
+            <button class="node-btn-size" data-node-grow="${node.id}" title="Увеличить блок (Шире/Больше)">+</button>
+          </div>
+          ${(node.type === 'oscilloscope' || node.type === 'spectrograph') ? `
+            <button class="node-btn-icon modal-open-btn" data-node-expand="${node.id}" data-modal="${node.id}" title="Развернуть детальный прибор на весь экран">⛶</button>
+          ` : ''}
+          <button class="node-btn-icon node-btn-del" data-node-delete="${node.id}" data-delete="${node.id}" title="Удалить блок">×</button>
         </div>
       </div>
       <div class="circuit-node-body">
         ${bodyHtml}
       </div>
+      <!-- Resize Handles: Corner, Right Edge, Bottom Edge -->
+      <div class="node-resize-handle node-resize-se" data-resize-dir="se" title="Потяните за угол для изменения размера (двойной клик — авторасширение по контенту)"></div>
+      <div class="node-resize-handle node-resize-e" data-resize-dir="e" title="Потяните за край для изменения ширины"></div>
+      <div class="node-resize-handle node-resize-s" data-resize-dir="s" title="Потяните за край для изменения высоты"></div>
     `;
 
     // Bind parameters change
@@ -819,17 +1523,26 @@ export class CircuitWorkbench {
           }
         }
 
-        // Toggle source rows
+        // Toggle source rows & update header icon/badge dynamically
         if (paramName === 'sourceType') {
           const isBits = val === 'digital_bits';
           const fmRow = el.querySelector(`#row-source-fm-${node.id}`);
           const bitsRow = el.querySelector(`#row-source-bits-${node.id}`);
           const bitRateRow = el.querySelector(`#row-source-bitrate-${node.id}`);
           const badgeEl = el.querySelector('.node-badge');
+          const titleEl = el.querySelector('.node-title');
           if (fmRow) fmRow.style.display = isBits ? 'none' : 'flex';
           if (bitsRow) bitsRow.style.display = isBits ? 'flex' : 'none';
           if (bitRateRow) bitRateRow.style.display = isBits ? 'flex' : 'none';
-          if (badgeEl) badgeEl.textContent = isBits ? 'DIGITAL' : 'НЧ';
+
+          const meta = getSourceMeta(val);
+          if (badgeEl) {
+            badgeEl.textContent = meta.badge;
+            badgeEl.style.color = meta.badgeColor;
+          }
+          if (titleEl) {
+            titleEl.innerHTML = `${meta.icon} <span class="node-title-text">${meta.title}</span>`;
+          }
         }
 
         // Toggle modulation rows
@@ -860,6 +1573,12 @@ export class CircuitWorkbench {
           }
         }
 
+        // Dynamically update schematic SVG
+        this.updateNodeSchematic(node, el);
+
+        // Auto-expand block if newly displayed rows or inputs exceed current size
+        this.autoExpandNodeIfNeeded(node, el, true);
+
         this.graph.notify();
       });
     });
@@ -881,15 +1600,40 @@ export class CircuitWorkbench {
     });
 
     // Delete node button
-    el.querySelector('[data-node-delete]').addEventListener('click', (e) => {
+    el.querySelector('[data-node-delete], [data-delete]')?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.graph.removeNode(node.id);
       el.remove();
       this.updateWires();
     });
 
+    // Size adjustment buttons
+    el.querySelector('[data-node-shrink]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.stepNodeSize(node, el, -1);
+    });
+
+    el.querySelector('[data-node-grow]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.stepNodeSize(node, el, +1);
+    });
+
+    el.querySelector('[data-node-reset-size]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.resetNodeSize(node, el);
+    });
+
+    // Double-click on size-pill auto-fits node to content
+    el.querySelector('.node-size-pill')?.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      this.autoFitNodeSize(node, el);
+    });
+
+    // Setup interactive corner and edge resize handles
+    this.setupNodeResize(el, node);
+
     // Expand instrument to modal popup
-    const expandBtn = el.querySelector('[data-node-expand]');
+    const expandBtn = el.querySelector('[data-node-expand], [data-modal]');
     if (expandBtn) {
       expandBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -906,10 +1650,19 @@ export class CircuitWorkbench {
       });
     }
 
+    // Setup custom dropdown selectors in this block
+    this.setupCustomDropdowns(el, node);
+
     // Drag block on canvas
     this.setupNodeDrag(el, node);
 
     this.nodesContainerEl.appendChild(el);
+
+    // Auto-expand block if initial dimensions are insufficient for correct content display
+    this.autoExpandNodeIfNeeded(node, el, false);
+    requestAnimationFrame(() => {
+      this.autoExpandNodeIfNeeded(node, el, false);
+    });
   }
 
   setupNodeDrag(el, node) {
@@ -917,8 +1670,14 @@ export class CircuitWorkbench {
     let startX, startY, initialLeft, initialTop;
 
     el.addEventListener('mousedown', (e) => {
-      // Don't drag if interacting with inputs, buttons or sockets
-      if (e.target.closest('input') || e.target.closest('select') || e.target.closest('button') || e.target.closest('.port-socket') || e.target.closest('canvas')) {
+      this.deselectWire();
+      this.hideContextMenu();
+      if (!e.target.closest('.custom-dropdown')) {
+        this.closeAllCustomDropdowns();
+      }
+
+      // Don't drag if interacting with inputs, buttons, sockets, custom dropdowns or resize handles
+      if (e.target.closest('input') || e.target.closest('select') || e.target.closest('button') || e.target.closest('.port-socket') || e.target.closest('canvas') || e.target.closest('.node-resize-handle') || e.target.closest('.custom-dropdown')) {
         return;
       }
       e.stopPropagation();
@@ -1048,30 +1807,133 @@ export class CircuitWorkbench {
       this.updateWires();
     });
 
-    // Mouse wheel zoom
+    // Mouse wheel & touchpad handling:
+    // - Two fingers on touchpad (e.ctrlKey === false): Pan canvas perspective
+    // - Pinch gesture on touchpad (e.ctrlKey === true): Zoom towards pointer gently and non-aggressively
     this.viewportEl.addEventListener('wheel', (e) => {
+      // 1. If scrolling inside an open custom dropdown, scroll the dropdown menu without panning canvas
+      const openDropdown = e.target.closest('.custom-dropdown.is-open');
+      if (openDropdown) {
+        const menu = openDropdown.querySelector('.custom-dropdown-menu');
+        if (menu && !e.ctrlKey) {
+          e.preventDefault();
+          menu.scrollTop += e.deltaY;
+          return;
+        }
+      }
+
+      // 2. If scrolling inside a scrollable node params panel, scroll the panel without panning canvas
+      const scrollablePanel = e.target.closest('.node-params-panel');
+      if (scrollablePanel && scrollablePanel.scrollHeight > scrollablePanel.clientHeight && !e.ctrlKey) {
+        e.preventDefault();
+        scrollablePanel.scrollTop += e.deltaY;
+        return;
+      }
+
       e.preventDefault();
-      const rect = this.viewportEl.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const delta = e.deltaY < 0 ? 0.1 : -0.1;
-      const newZoom = Math.min(2.0, Math.max(0.4, this.zoom + delta));
-
-      // Zoom towards mouse pointer
-      this.panX -= (mouseX - this.panX) * (newZoom / this.zoom - 1);
-      this.panY -= (mouseY - this.panY) * (newZoom / this.zoom - 1);
-      this.zoom = newZoom;
-
       this.hideContextMenu();
-      this.updateTransform();
-      this.updateWires();
+
+      if (e.ctrlKey) {
+        // Pinch-to-zoom gesture on touchpad or Ctrl + wheel
+        const rect = this.viewportEl.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Controlled, gentle exponential zoom (less aggressive)
+        const pinchSensitivity = 0.0035;
+        const zoomFactor = Math.exp(-e.deltaY * pinchSensitivity);
+        const newZoom = Math.min(2.0, Math.max(0.4, this.zoom * zoomFactor));
+
+        if (Math.abs(newZoom - this.zoom) > 0.0001) {
+          this.panX -= (mouseX - this.panX) * (newZoom / this.zoom - 1);
+          this.panY -= (mouseY - this.panY) * (newZoom / this.zoom - 1);
+          this.zoom = newZoom;
+
+          this.updateTransform();
+          this.updateWires();
+        }
+      } else {
+        // Two-finger move on touchpad: Pan canvas perspective
+        this.panX -= e.deltaX;
+        this.panY -= e.deltaY;
+
+        this.updateTransform();
+        this.updateWires();
+      }
     }, { passive: false });
+
+    // Multi-touch gestures for touchscreens (2-finger pan & pinch zoom)
+    let touchStartDist = 0;
+    let touchStartZoom = 1;
+    let touchStartMidX = 0;
+    let touchStartMidY = 0;
+    let touchStartPanX = 0;
+    let touchStartPanY = 0;
+
+    this.viewportEl.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        this.hideContextMenu();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+
+        touchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        touchStartZoom = this.zoom;
+
+        const rect = this.viewportEl.getBoundingClientRect();
+        touchStartMidX = (t1.clientX + t2.clientX) / 2 - rect.left;
+        touchStartMidY = (t1.clientY + t2.clientY) / 2 - rect.top;
+        touchStartPanX = this.panX;
+        touchStartPanY = this.panY;
+      }
+    }, { passive: false });
+
+    this.viewportEl.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+
+        const curDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        if (touchStartDist > 0 && curDist > 0) {
+          // Gentle scale factor with dampening
+          const rawRatio = curDist / touchStartDist;
+          const smoothedRatio = Math.pow(rawRatio, 0.7);
+          const targetZoom = Math.min(2.0, Math.max(0.4, touchStartZoom * smoothedRatio));
+
+          const rect = this.viewportEl.getBoundingClientRect();
+          const curMidX = (t1.clientX + t2.clientX) / 2 - rect.left;
+          const curMidY = (t1.clientY + t2.clientY) / 2 - rect.top;
+
+          const dPanX = curMidX - touchStartMidX;
+          const dPanY = curMidY - touchStartMidY;
+
+          this.panX = touchStartMidX - (touchStartMidX - (touchStartPanX + dPanX)) * (targetZoom / touchStartZoom);
+          this.panY = touchStartMidY - (touchStartMidY - (touchStartPanY + dPanY)) * (targetZoom / touchStartZoom);
+          this.zoom = targetZoom;
+
+          this.updateTransform();
+          this.updateWires();
+        }
+      }
+    }, { passive: false });
+
+    this.viewportEl.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        touchStartDist = 0;
+      }
+    });
 
     // 3. Pan canvas by dragging background
     this.viewportEl.addEventListener('mousedown', (e) => {
       this.hideContextMenu();
-      if (e.target.closest('.circuit-node') || e.target.closest('.workbench-toolbar')) {
+      if (!e.target.closest('.custom-dropdown')) {
+        this.closeAllCustomDropdowns();
+      }
+      if (!e.target.closest('.cable-rendered') && !e.target.closest('#wb-context-menu')) {
+        this.deselectWire();
+      }
+      if (e.target.closest('.circuit-node') || e.target.closest('.workbench-toolbar') || e.target.closest('.cable-rendered')) {
         return;
       }
 
@@ -1156,23 +2018,44 @@ export class CircuitWorkbench {
     // Cancel active wiring / dismiss context menu if clicked empty space
     this.viewportEl.addEventListener('click', (e) => {
       this.hideContextMenu();
+      if (!e.target.closest('.custom-dropdown')) {
+        this.closeAllCustomDropdowns();
+      }
       if (!e.target.closest('.port-socket') && this.activeWiring) {
         this.cancelWiring();
       }
+      if (!e.target.closest('.cable-rendered') && !e.target.closest('#wb-context-menu')) {
+        this.deselectWire();
+      }
     });
 
-    // Global document click to close context menu
+    // Global document click to close context menu & custom dropdowns
     this.docClickHandler = (e) => {
       if (!e.target.closest('#wb-context-menu')) {
         this.hideContextMenu();
       }
+      if (!e.target.closest('.custom-dropdown')) {
+        this.closeAllCustomDropdowns();
+      }
     };
     document.addEventListener('click', this.docClickHandler);
 
-    // 5. Toolbar action buttons
-    this.container.querySelector('#btn-wb-load-preset').addEventListener('click', () => {
-      this.setupInitialPreset();
-    });
+    // 5. Toolbar action buttons & preset selection
+    const presetSelect = this.container.querySelector('#wb-preset-select');
+    if (presetSelect) {
+      presetSelect.addEventListener('change', (e) => {
+        this.loadPreset(e.target.value);
+      });
+    }
+
+    const loadPresetBtn = this.container.querySelector('#btn-wb-load-preset');
+    if (loadPresetBtn) {
+      loadPresetBtn.addEventListener('click', () => {
+        const sel = this.container.querySelector('#wb-preset-select');
+        const val = sel ? sel.value : 'am';
+        this.loadPreset(val);
+      });
+    }
 
     this.container.querySelector('#btn-wb-clear-all').addEventListener('click', () => {
       this.graph.clear();
@@ -1219,11 +2102,22 @@ export class CircuitWorkbench {
     this.escKeyHandler = (e) => {
       if (e.key === 'Escape') {
         this.hideContextMenu();
+        this.closeAllCustomDropdowns();
         if (this.activeWiring) {
           this.cancelWiring();
         }
         if (this.activeModalNodeId) {
           this.closeInstrumentModal();
+        }
+        this.deselectWire();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT' || document.activeElement?.isContentEditable) {
+          return;
+        }
+        if (this.selectedWireId) {
+          e.preventDefault();
+          this.deleteWire(this.selectedWireId);
         }
       }
     };
@@ -1400,6 +2294,11 @@ export class CircuitWorkbench {
   }
 
   updateWires() {
+    // If selected wire is no longer present in graph, clear selection
+    if (this.selectedWireId && !this.graph.wires.some(w => w.id === this.selectedWireId)) {
+      this.selectedWireId = null;
+    }
+
     // Clear existing rendered wires (preserve temp wire if present)
     const oldWires = this.wiresSvgEl.querySelectorAll('.cable-rendered');
     oldWires.forEach(w => w.remove());
@@ -1430,26 +2329,84 @@ export class CircuitWorkbench {
       };
 
       const pathD = this.getOrthogonalPath(p1.x, p1.y, p2.x, p2.y);
+      const isSelected = this.selectedWireId === wire.id;
 
       const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      group.setAttribute('class', 'cable-rendered');
+      group.setAttribute('class', `cable-rendered${isSelected ? ' is-selected' : ''}`);
       group.setAttribute('data-wire-id', wire.id);
       group.style.setProperty('--wire-color', wire.color);
 
       group.innerHTML = `
         <path class="cable-glow-path" d="${pathD}" fill="none" stroke="${wire.color}" stroke-width="7" stroke-opacity="0.25" stroke-linecap="round" stroke-linejoin="round" />
         <path class="cable-main-path" d="${pathD}" fill="none" stroke="${wire.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-        <path class="cable-hit-area" d="${pathD}" fill="none" stroke="transparent" stroke-width="22" style="pointer-events: stroke; cursor: context-menu;" />
-        <circle cx="${p1.x}" cy="${p1.y}" r="4.5" fill="${wire.color}" style="pointer-events: fill; cursor: context-menu;" />
-        <circle cx="${p2.x}" cy="${p2.y}" r="4.5" fill="${wire.color}" style="pointer-events: fill; cursor: context-menu;" />
+        <path class="cable-select-dash" d="${pathD}" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path class="cable-hit-area" d="${pathD}" fill="none" stroke="rgba(255,255,255,0.001)" stroke-width="38" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: stroke; cursor: pointer;" />
+        <circle class="cable-endpoint" cx="${p1.x}" cy="${p1.y}" r="6" fill="${wire.color}" style="pointer-events: all; cursor: pointer;" />
+        <circle class="cable-endpoint" cx="${p2.x}" cy="${p2.y}" r="6" fill="${wire.color}" style="pointer-events: all; cursor: pointer;" />
       `;
 
+      // Instant selection on mousedown (left click)
+      group.addEventListener('mousedown', (e) => {
+        if (e.button === 0) {
+          e.stopPropagation();
+          this.hideContextMenu();
+          this.selectWire(wire.id);
+        }
+      });
+
+      // Click on wire: select wire
+      group.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.hideContextMenu();
+        this.selectWire(wire.id);
+      });
+
+      // Right-click on wire: select wire and open context menu
       group.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.selectWire(wire.id);
         this.showWireContextMenu(e, wire);
       });
 
       this.wiresSvgEl.appendChild(group);
     });
+  }
+
+  selectWire(wireId) {
+    if (this.selectedWireId === wireId) return;
+    this.selectedWireId = wireId;
+    this.highlightSelectedWire();
+  }
+
+  deselectWire() {
+    if (!this.selectedWireId) return;
+    this.selectedWireId = null;
+    this.highlightSelectedWire();
+  }
+
+  highlightSelectedWire() {
+    const renderedWires = this.wiresSvgEl.querySelectorAll('.cable-rendered');
+    renderedWires.forEach(el => {
+      const wId = el.getAttribute('data-wire-id');
+      if (wId === this.selectedWireId) {
+        el.classList.add('is-selected');
+        this.wiresSvgEl.appendChild(el);
+      } else {
+        el.classList.remove('is-selected');
+      }
+    });
+  }
+
+  deleteWire(wireId) {
+    if (!wireId) return;
+    if (this.selectedWireId === wireId) {
+      this.selectedWireId = null;
+    }
+    this.graph.disconnect(wireId);
+    this.updateWires();
+    this.hideContextMenu();
   }
 
   autoWireAll() {
@@ -1505,6 +2462,13 @@ export class CircuitWorkbench {
   renderOscilloscopeCanvas(node) {
     const canvas = this.container.querySelector(`#canvas-${node.id}`);
     if (!canvas) return;
+    const wrapper = canvas.parentElement;
+    if (wrapper && wrapper.clientWidth > 0 && wrapper.clientHeight > 0) {
+      if (canvas.width !== wrapper.clientWidth || canvas.height !== wrapper.clientHeight) {
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+      }
+    }
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
@@ -1589,6 +2553,13 @@ export class CircuitWorkbench {
   renderSpectrographCanvas(node) {
     const canvas = this.container.querySelector(`#canvas-${node.id}`);
     if (!canvas) return;
+    const wrapper = canvas.parentElement;
+    if (wrapper && wrapper.clientWidth > 0 && wrapper.clientHeight > 0) {
+      if (canvas.width !== wrapper.clientWidth || canvas.height !== wrapper.clientHeight) {
+        canvas.width = wrapper.clientWidth;
+        canvas.height = wrapper.clientHeight;
+      }
+    }
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
@@ -1628,12 +2599,54 @@ export class CircuitWorkbench {
       return;
     }
 
-    // Noise floor line
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    const filterInfo = this.graph.getFilterInfo(node.id, 'in');
+
+    // Draw filter passband mask zone if connected through a bandpass filter
+    if (filterInfo) {
+      const leftF = Math.max(0, filterInfo.centerFreq - filterInfo.bw / 2);
+      const rightF = Math.min(maxFreq, filterInfo.centerFreq + filterInfo.bw / 2);
+      const xLeft = fToX(leftF);
+      const xRight = fToX(rightF);
+
+      ctx.save();
+      // Shaded passband region
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
+      ctx.fillRect(xLeft, 0, xRight - xLeft, yBase);
+
+      // Boundary cutoff lines
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(xLeft, 0); ctx.lineTo(xLeft, yBase);
+      ctx.moveTo(xRight, 0); ctx.lineTo(xRight, yBase);
+      ctx.stroke();
+
+      // Bandwidth tag at top
+      ctx.fillStyle = '#10b981';
+      ctx.font = '700 8.5px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`ΔF: ${(filterInfo.bw / 1000).toFixed(1)}k`, (xLeft + xRight) / 2, 10);
+      ctx.restore();
+    }
+
+    // Dynamic noise floor (proportional to filter noise %)
+    const noiseVal = filterInfo ? (filterInfo.noise / 100) : 0;
+    ctx.strokeStyle = noiseVal > 0 ? `rgba(16, 185, 129, ${0.25 + noiseVal * 0.6})` : 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(0, yBase);
-    for (let x = 0; x <= w; x += 6) {
-      ctx.lineTo(x, yBase - Math.random() * 4);
+    for (let x = 0; x <= w; x += 4) {
+      const f = (x / w) * maxFreq;
+      let nAmp = Math.random() * (2 + noiseVal * 8);
+      if (filterInfo && noiseVal > 0) {
+        // Noise passing through the filter forms a hump within the passband
+        const distF = Math.abs(f - filterInfo.centerFreq);
+        const ratio = (2 * distF) / Math.max(200, filterInfo.bw);
+        const filterShape = 1.0 / Math.sqrt(1 + Math.pow(ratio, 4));
+        nAmp += filterShape * noiseVal * 28 * (0.6 + Math.random() * 0.8);
+      }
+      ctx.lineTo(x, yBase - nAmp);
     }
     ctx.stroke();
 
@@ -1650,6 +2663,15 @@ export class CircuitWorkbench {
       for (let x = 0; x <= w; x += step) {
         const f = (x / w) * maxFreq;
         let amp = 0.02;
+
+        // Add channel noise through filter into the continuous curve
+        if (filterInfo && noiseVal > 0) {
+          const distF = Math.abs(f - filterInfo.centerFreq);
+          const ratio = (2 * distF) / Math.max(200, filterInfo.bw);
+          const filterShape = 1.0 / Math.sqrt(1 + Math.pow(ratio, 4));
+          amp += (filterShape * 0.75 + 0.1) * noiseVal * 0.9 + (Math.random() - 0.5) * noiseVal * 0.15;
+        }
+
         for (const p of peaks) {
           const df = f - p.freq;
           amp += p.amp * Math.exp(-0.5 * (df / rbw) * (df / rbw));
@@ -1911,7 +2933,7 @@ export class CircuitWorkbench {
       badge.style.background = 'rgba(0, 240, 255, 0.15)';
       badge.style.color = '#00f0ff';
       badge.style.border = '1px solid rgba(0, 240, 255, 0.4)';
-      title.textContent = 'Лабораторный 2D Осциллограф s(t)';
+      title.innerHTML = `${icons.oscilloscopeScreen} <span>Лабораторный 2D Осциллограф s(t)</span>`;
       src.textContent = `Входной кабель: ${sourceDesc}`;
 
       footer.innerHTML = `
@@ -1964,7 +2986,7 @@ export class CircuitWorkbench {
       badge.style.background = 'rgba(168, 85, 247, 0.15)';
       badge.style.color = '#c084fc';
       badge.style.border = '1px solid rgba(168, 85, 247, 0.4)';
-      title.textContent = 'Анализатор Спектра (Двухканальный FFT Analyzer)';
+      title.innerHTML = `${icons.spectrographFft} <span>Анализатор Спектра (Двухканальный FFT Analyzer)</span>`;
 
       const wire1 = this.graph.getInputWire(node.id, 'in');
       const wire2 = this.graph.getInputWire(node.id, 'in-2');
@@ -2405,12 +3427,66 @@ export class CircuitWorkbench {
       return;
     }
 
-    // Noise floor line
-    ctx.strokeStyle = 'rgba(168, 85, 247, 0.18)';
+    const filterInfo = inWire1 ? this.graph.getFilterInfo(node.id, 'in') : (inWire2 ? this.graph.getFilterInfo(node.id, 'in-2') : null);
+
+    // Draw high-resolution passband mask zone on modal canvas
+    if (filterInfo) {
+      const leftF = filterInfo.centerFreq - filterInfo.bw / 2;
+      const rightF = filterInfo.centerFreq + filterInfo.bw / 2;
+      const xLeft = Math.max(0, Math.min(w, fToX(leftF)));
+      const xRight = Math.max(0, Math.min(w, fToX(rightF)));
+
+      if (xRight > xLeft) {
+        ctx.save();
+        // Passband shaded region
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
+        ctx.fillRect(xLeft, topMargin, xRight - xLeft, yBase - topMargin);
+
+        // Boundary cutoff lines
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(xLeft, topMargin); ctx.lineTo(xLeft, yBase);
+        ctx.moveTo(xRight, topMargin); ctx.lineTo(xRight, yBase);
+        ctx.stroke();
+
+        // Passband label badge
+        const badgeText = `ПОЛОСА ФИЛЬТРА: ΔF = ${(filterInfo.bw / 1000).toFixed(1)} кГц [${(leftF/1000).toFixed(1)} .. ${(rightF/1000).toFixed(1)} кГц]`;
+        ctx.font = '700 10px "JetBrains Mono", monospace';
+        const tW = ctx.measureText(badgeText).width;
+        const bX = Math.max(tW / 2 + 10, Math.min(w - tW / 2 - 10, (xLeft + xRight) / 2));
+        
+        ctx.fillStyle = 'rgba(6, 15, 25, 0.9)';
+        ctx.fillRect(bX - tW / 2 - 6, topMargin + 4, tW + 12, 20);
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.strokeRect(bX - tW / 2 - 6, topMargin + 4, tW + 12, 20);
+
+        ctx.fillStyle = '#10b981';
+        ctx.textAlign = 'center';
+        ctx.fillText(badgeText, bX, topMargin + 18);
+        ctx.restore();
+      }
+    }
+
+    // Dynamic noise floor (proportional to filter noise %)
+    const noiseVal = filterInfo ? (filterInfo.noise / 100) : 0;
+    ctx.strokeStyle = noiseVal > 0 ? `rgba(16, 185, 129, ${0.3 + noiseVal * 0.6})` : 'rgba(168, 85, 247, 0.18)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(0, yBase);
-    for (let x = 0; x <= w; x += 5) {
-      ctx.lineTo(x, yBase - Math.random() * 6);
+    for (let x = 0; x <= w; x += 4) {
+      const f = fMin + (x / w) * fSpan;
+      let nAmp = Math.random() * (4 + noiseVal * 10);
+      if (filterInfo && noiseVal > 0) {
+        const distF = Math.abs(f - filterInfo.centerFreq);
+        const ratio = (2 * distF) / Math.max(200, filterInfo.bw);
+        const filterShape = 1.0 / Math.sqrt(1 + Math.pow(ratio, 4));
+        nAmp += filterShape * noiseVal * 40 * (0.6 + Math.random() * 0.8);
+      }
+      ctx.lineTo(x, yBase - nAmp);
     }
     ctx.stroke();
 
@@ -2441,6 +3517,15 @@ export class CircuitWorkbench {
         for (let x = 0; x <= w; x += step) {
           const f = fMin + (x / w) * fSpan;
           let amp = 0.015 * scaleV;
+
+          // Add channel noise through filter into the continuous curve
+          if (filterInfo && noiseVal > 0) {
+            const distF = Math.abs(f - filterInfo.centerFreq);
+            const ratio = (2 * distF) / Math.max(200, filterInfo.bw);
+            const filterShape = 1.0 / Math.sqrt(1 + Math.pow(ratio, 4));
+            amp += ((filterShape * 0.75 + 0.1) * noiseVal * 0.9 + (Math.random() - 0.5) * noiseVal * 0.15) * scaleV;
+          }
+
           for (const p of peaks) {
             const df = f - p.freq;
             amp += p.amp * Math.exp(-0.5 * (df / rbw) * (df / rbw));
@@ -2624,6 +3709,17 @@ export class CircuitWorkbench {
       drawTraceGroup(peaks2, 'CH2', inWire1 ? '#00f0ff' : null, false);
     }
 
+    // If filter is in circuit path, add filter parameters chip
+    if (filterInfo) {
+      peakChips.unshift(`
+        <div class="modal-hud-item" style="border-color: #10b981; background: rgba(16, 185, 129, 0.12);" title="Параметры полосового фильтра">
+          <span style="color: #10b981; font-weight: 700;">● ФИЛЬТР ΔF:</span>
+          <span style="color: #ffffff;">${(filterInfo.bw / 1000).toFixed(1)} кГц</span>
+          <span style="color: ${filterInfo.noise > 0 ? '#f59e0b' : '#94a3b8'}; font-size: 0.72rem; margin-left: 0.25rem;">(Шум: ${filterInfo.noise}%)</span>
+        </div>
+      `);
+    }
+
     // Update peaks HUD chips in modal footer
     const peaksListEl = this.container.querySelector('#modal-peaks-list');
     if (peaksListEl) {
@@ -2679,15 +3775,24 @@ export class CircuitWorkbench {
         <span class="context-menu-sub">${fromName} (${fromPort}) → ${toName} (${toPort})</span>
       </div>
       <div class="context-menu-item danger" id="cm-delete-wire">
-        <span>✂️</span>
-        <span>Удалить этот провод</span>
+        <span>🗑️</span>
+        <span style="flex: 1;">Удалить провод</span>
+        <span class="cm-shortcut-badge">Delete</span>
+      </div>
+      <div class="context-menu-item" id="cm-deselect-wire">
+        <span>✕</span>
+        <span>Снять выделение</span>
       </div>
     `;
 
     menu.querySelector('#cm-delete-wire').addEventListener('click', (ev) => {
       ev.stopPropagation();
-      this.graph.disconnect(wire.id);
-      this.updateWires();
+      this.deleteWire(wire.id);
+    });
+
+    menu.querySelector('#cm-deselect-wire')?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      this.deselectWire();
       this.hideContextMenu();
     });
 
