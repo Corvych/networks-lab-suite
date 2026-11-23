@@ -86,6 +86,8 @@ export class CircuitWorkbench {
     this.isDockCollapsed = false;
     this.fullscreenChangeHandler = null;
     this.windowResizeHandler = null;
+    this.liveDragNode = null;
+    this.draggedBlockType = null;
 
     this.initUI();
     // Start with a clean empty canvas so the student builds from scratch!
@@ -1715,10 +1717,26 @@ export class CircuitWorkbench {
     });
   }
 
+  removeLiveDragNode() {
+    if (!this.liveDragNode) return;
+    const nodeId = this.liveDragNode.id;
+    this.graph.removeNode(nodeId);
+    const el = document.getElementById(nodeId);
+    if (el) el.remove();
+    this.liveDragNode = null;
+    this.updateWires();
+    this.updateEmptyState();
+  }
+
   bindEvents() {
     // 1. Drag-and-Drop from Bottom Dock to Canvas
     const dockCards = this.container.querySelectorAll('.dock-card');
     this.draggedBlockType = null;
+    this.liveDragNode = null;
+
+    // Transparent image to suppress native browser drag ghost snapshot overlay
+    const emptyDragGhost = new Image();
+    emptyDragGhost.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
     dockCards.forEach(card => {
       // Native HTML5 DragStart
@@ -1726,13 +1744,19 @@ export class CircuitWorkbench {
         const type = card.dataset.type;
         this.draggedBlockType = type;
         e.dataTransfer.setData('text/plain', type);
-        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.effectAllowed = 'move';
+        if (e.dataTransfer.setDragImage) {
+          e.dataTransfer.setDragImage(emptyDragGhost, 0, 0);
+        }
         card.classList.add('is-dragging');
       });
 
-      // DragEnd
+      // DragEnd: if user cancelled or dropped outside, safely remove live preview
       card.addEventListener('dragend', () => {
         card.classList.remove('is-dragging');
+        if (this.liveDragNode) {
+          this.removeLiveDragNode();
+        }
         this.draggedBlockType = null;
         this.viewportEl.classList.remove('drag-over');
       });
@@ -1749,6 +1773,18 @@ export class CircuitWorkbench {
       });
     });
 
+    const getCanvasCoordsForDrag = (e, nodeType) => {
+      const vpRect = this.viewportEl.getBoundingClientRect();
+      const mouseX = e.clientX - vpRect.left;
+      const mouseY = e.clientY - vpRect.top;
+      const defSize = this.getNodeDefaultSize(nodeType);
+      const width = this.liveDragNode?.width || defSize.width;
+      const height = this.liveDragNode?.height || defSize.height;
+      const blockX = Math.max(10, (mouseX - this.panX) / this.zoom - width / 2);
+      const blockY = Math.max(10, (mouseY - this.panY) / this.zoom - Math.min(35, height / 2));
+      return { blockX, blockY };
+    };
+
     // Viewport Drag & Drop Target Handlers
     this.viewportEl.addEventListener('dragenter', (e) => {
       e.preventDefault();
@@ -1757,16 +1793,45 @@ export class CircuitWorkbench {
 
     this.viewportEl.addEventListener('dragover', (e) => {
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
+      e.dataTransfer.dropEffect = 'move';
       if (!this.viewportEl.classList.contains('drag-over')) {
         this.viewportEl.classList.add('drag-over');
+      }
+
+      const type = this.draggedBlockType;
+      if (!type) return;
+
+      const { blockX, blockY } = getCanvasCoordsForDrag(e, type);
+
+      if (!this.liveDragNode) {
+        this.liveDragNode = this.createNode(type, blockX, blockY);
+        this.renderNodeElement(this.liveDragNode);
+        const el = document.getElementById(this.liveDragNode.id);
+        if (el) {
+          el.classList.add('is-drag-preview');
+        }
+      } else {
+        this.liveDragNode.x = blockX;
+        this.liveDragNode.y = blockY;
+        const el = document.getElementById(this.liveDragNode.id);
+        if (el) {
+          el.style.left = `${blockX}px`;
+          el.style.top = `${blockY}px`;
+        }
       }
     });
 
     this.viewportEl.addEventListener('dragleave', (e) => {
       const rect = this.viewportEl.getBoundingClientRect();
-      if (e.clientX <= rect.left || e.clientX >= rect.right || e.clientY <= rect.top || e.clientY >= rect.bottom) {
+      if (
+        e.clientX <= rect.left ||
+        e.clientX >= rect.right ||
+        e.clientY <= rect.top ||
+        e.clientY >= rect.bottom ||
+        (e.clientX === 0 && e.clientY === 0)
+      ) {
         this.viewportEl.classList.remove('drag-over');
+        this.removeLiveDragNode();
       }
     });
 
@@ -1774,19 +1839,37 @@ export class CircuitWorkbench {
       e.preventDefault();
       this.viewportEl.classList.remove('drag-over');
       const type = e.dataTransfer.getData('text/plain') || this.draggedBlockType;
-      if (!type) return;
+      if (!type) {
+        this.removeLiveDragNode();
+        return;
+      }
 
-      const vpRect = this.viewportEl.getBoundingClientRect();
-      const mouseX = e.clientX - vpRect.left;
-      const mouseY = e.clientY - vpRect.top;
+      const { blockX, blockY } = getCanvasCoordsForDrag(e, type);
 
-      // Accurately compute canvas coordinate accounting for zoom & panning
-      const canvasX = (mouseX - this.panX) / this.zoom - 100;
-      const canvasY = (mouseY - this.panY) / this.zoom - 50;
+      if (this.liveDragNode) {
+        this.liveDragNode.x = blockX;
+        this.liveDragNode.y = blockY;
+        const el = document.getElementById(this.liveDragNode.id);
+        if (el) {
+          el.style.left = `${blockX}px`;
+          el.style.top = `${blockY}px`;
+          el.classList.remove('is-drag-preview');
+          el.classList.add('node-just-placed');
+          setTimeout(() => el.classList.remove('node-just-placed'), 600);
+        }
+        this.liveDragNode = null;
+      } else {
+        const node = this.createNode(type, blockX, blockY);
+        this.renderNodeElement(node);
+        const el = document.getElementById(node.id);
+        if (el) {
+          el.classList.add('node-just-placed');
+          setTimeout(() => el.classList.remove('node-just-placed'), 600);
+        }
+      }
 
-      const node = this.createNode(type, Math.max(20, canvasX), Math.max(20, canvasY));
-      this.renderNodeElement(node);
       this.updateWires();
+      this.updateEmptyState();
       this.draggedBlockType = null;
     });
 
