@@ -1477,10 +1477,6 @@ export class CircuitWorkbench {
           <span class="node-badge" style="color: ${badgeColor};">${badgeLabel}</span>
         </div>
         <div class="node-header-actions">
-          <div class="node-size-pill" title="Размер блока (− / +). Двойной клик — авторасширение по контенту">
-            <button class="node-btn-size" data-node-shrink="${node.id}" title="Уменьшить блок (Компактнее)">−</button>
-            <button class="node-btn-size" data-node-grow="${node.id}" title="Увеличить блок (Шире/Больше)">+</button>
-          </div>
           ${(node.type === 'oscilloscope' || node.type === 'spectrograph') ? `
             <button class="node-btn-icon modal-open-btn" data-node-expand="${node.id}" data-modal="${node.id}" title="Развернуть детальный прибор на весь экран">⛶</button>
           ` : ''}
@@ -1610,28 +1606,6 @@ export class CircuitWorkbench {
       this.graph.removeNode(node.id);
       el.remove();
       this.updateWires();
-    });
-
-    // Size adjustment buttons
-    el.querySelector('[data-node-shrink]')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.stepNodeSize(node, el, -1);
-    });
-
-    el.querySelector('[data-node-grow]')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.stepNodeSize(node, el, +1);
-    });
-
-    el.querySelector('[data-node-reset-size]')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.resetNodeSize(node, el);
-    });
-
-    // Double-click on size-pill auto-fits node to content
-    el.querySelector('.node-size-pill')?.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
-      this.autoFitNodeSize(node, el);
     });
 
     // Setup interactive corner and edge resize handles
@@ -2181,14 +2155,18 @@ export class CircuitWorkbench {
 
         e.preventDefault();
         const rect = modalCanvas.getBoundingClientRect();
+        if (rect.width <= 0) return;
         const mouseX = e.clientX - rect.left;
         const ratio = Math.max(0, Math.min(1, mouseX / rect.width));
 
-        const span = this.spectroFreqMax - this.spectroFreqMin;
+        let fMin = Number.isFinite(this.spectroFreqMin) ? this.spectroFreqMin : 0;
+        let fMax = Number.isFinite(this.spectroFreqMax) ? this.spectroFreqMax : 40000;
+        if (fMax <= fMin) { fMin = 0; fMax = 40000; }
+        const span = fMax - fMin;
         const zoomFactor = e.deltaY < 0 ? 0.78 : 1.28;
         const newSpan = Math.max(1000, Math.min(120000, span * zoomFactor));
 
-        const centerF = this.spectroFreqMin + ratio * span;
+        const centerF = fMin + ratio * span;
         this.spectroFreqMin = Math.max(0, Math.round(centerF - ratio * newSpan));
         this.spectroFreqMax = Math.round(this.spectroFreqMin + newSpan);
 
@@ -2206,15 +2184,20 @@ export class CircuitWorkbench {
         const node = this.graph.nodes.get(this.activeModalNodeId);
         if (!node || node.type !== 'spectrograph') return;
 
+        let fMin = Number.isFinite(this.spectroFreqMin) ? this.spectroFreqMin : 0;
+        let fMax = Number.isFinite(this.spectroFreqMax) ? this.spectroFreqMax : 40000;
+        if (fMax <= fMin) { fMin = 0; fMax = 40000; }
+
         isPanningSpectro = true;
         panStartMouseX = e.clientX;
-        panStartFMin = this.spectroFreqMin;
-        panStartFMax = this.spectroFreqMax;
+        panStartFMin = fMin;
+        panStartFMax = fMax;
         modalCanvas.style.cursor = 'ew-resize';
 
         const onMouseMove = (moveEvt) => {
-          if (!isPanningSpectro) return;
+          if (!isPanningSpectro || !this.activeModalNodeId) return;
           const rect = modalCanvas.getBoundingClientRect();
+          if (rect.width <= 0) return;
           const dxPx = moveEvt.clientX - panStartMouseX;
           const span = panStartFMax - panStartFMin;
           const dFreq = (dxPx / rect.width) * span;
@@ -2226,11 +2209,12 @@ export class CircuitWorkbench {
             newFMin = 0;
           }
 
-          this.spectroFreqMin = Math.round(newFMin);
-          this.spectroFreqMax = Math.round(newFMax);
-
-          this.updateModalControls(node);
-          this.renderModalSpectrograph(node);
+          if (Number.isFinite(newFMin) && Number.isFinite(newFMax) && newFMax > newFMin) {
+            this.spectroFreqMin = Math.round(newFMin);
+            this.spectroFreqMax = Math.round(newFMax);
+            this.updateModalControls(node);
+            this.renderModalSpectrograph(node);
+          }
         };
 
         const onMouseUp = () => {
@@ -2479,30 +2463,34 @@ export class CircuitWorkbench {
   // Animation loop updating all standalone Oscilloscope and Spectrograph screens
   startAnimationLoop() {
     const renderLoop = () => {
-      this.timeOffset += 0.00002;
+      try {
+        this.timeOffset += 0.00002;
 
-      // Render each oscilloscope block
-      for (const node of this.graph.nodes.values()) {
-        if (node.type === 'oscilloscope') {
-          this.renderOscilloscopeCanvas(node);
-        } else if (node.type === 'spectrograph') {
-          this.renderSpectrographCanvas(node);
-        }
-      }
-
-      // Render modal detailed view if open and not frozen
-      if (this.activeModalNodeId && !this.isModalFrozen) {
-        const modalNode = this.graph.nodes.get(this.activeModalNodeId);
-        if (modalNode) {
-          if (modalNode.type === 'oscilloscope') {
-            this.renderModalOscilloscope(modalNode);
-          } else if (modalNode.type === 'spectrograph') {
-            this.renderModalSpectrograph(modalNode);
+        // Render each oscilloscope block
+        for (const node of this.graph.nodes.values()) {
+          if (node.type === 'oscilloscope') {
+            this.renderOscilloscopeCanvas(node);
+          } else if (node.type === 'spectrograph') {
+            this.renderSpectrographCanvas(node);
           }
         }
-      }
 
-      this.animationId = requestAnimationFrame(renderLoop);
+        // Render modal detailed view if open and not frozen
+        if (this.activeModalNodeId && !this.isModalFrozen) {
+          const modalNode = this.graph.nodes.get(this.activeModalNodeId);
+          if (modalNode) {
+            if (modalNode.type === 'oscilloscope') {
+              this.renderModalOscilloscope(modalNode);
+            } else if (modalNode.type === 'spectrograph') {
+              this.renderModalSpectrograph(modalNode);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Render loop error:', err);
+      } finally {
+        this.animationId = requestAnimationFrame(renderLoop);
+      }
     };
     this.animationId = requestAnimationFrame(renderLoop);
   }
@@ -2520,6 +2508,7 @@ export class CircuitWorkbench {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
+    if (!ctx || w <= 0 || h <= 0) return;
 
     ctx.clearRect(0, 0, w, h);
 
@@ -2611,6 +2600,7 @@ export class CircuitWorkbench {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
+    if (!ctx || w <= 0 || h <= 0) return;
 
     ctx.clearRect(0, 0, w, h);
 
@@ -2745,16 +2735,25 @@ export class CircuitWorkbench {
         if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
         else ctx.lineTo(pts[i].x, pts[i].y);
       }
-      if (sorted.length > 1 && !isDashed) {
-        const lineGrad = ctx.createLinearGradient(0, 0, w, 0);
-        sorted.forEach(p => {
-          const col = p.color || pColor;
-          const pos = Math.max(0, Math.min(1, fToX(p.freq) / w));
-          lineGrad.addColorStop(pos, col);
-        });
-        lineGrad.addColorStop(0, sorted[0].color || pColor);
-        lineGrad.addColorStop(1, sorted[sorted.length - 1].color || pColor);
-        ctx.strokeStyle = lineGrad;
+      if (sorted.length > 1 && !isDashed && w > 0) {
+        try {
+          const lineGrad = ctx.createLinearGradient(0, 0, w, 0);
+          const stops = [];
+          sorted.forEach(p => {
+            const col = p.color || pColor;
+            const rawPos = fToX(p.freq) / w;
+            if (Number.isFinite(rawPos)) {
+              stops.push({ pos: Math.max(0, Math.min(1, rawPos)), col });
+            }
+          });
+          stops.sort((a, b) => a.pos - b.pos);
+          lineGrad.addColorStop(0, stops[0]?.col || sorted[0].color || pColor);
+          stops.forEach(s => lineGrad.addColorStop(s.pos, s.col));
+          lineGrad.addColorStop(1, stops[stops.length - 1]?.col || sorted[sorted.length - 1].color || pColor);
+          ctx.strokeStyle = lineGrad;
+        } catch (e) {
+          ctx.strokeStyle = pColor;
+        }
       } else {
         ctx.strokeStyle = pColor;
       }
@@ -2782,10 +2781,18 @@ export class CircuitWorkbench {
           ctx.moveTo(prev.x, prev.y);
           ctx.bezierCurveTo(midX, prev.y, midX, curr.y, curr.x, curr.y);
 
-          const segGrad = ctx.createLinearGradient(prev.x, prev.y, curr.x, curr.y);
-          segGrad.addColorStop(0, prev.color);
-          segGrad.addColorStop(1, curr.color);
-          ctx.strokeStyle = segGrad;
+          try {
+            if (Math.abs(curr.x - prev.x) > 0.1 || Math.abs(curr.y - prev.y) > 0.1) {
+              const segGrad = ctx.createLinearGradient(prev.x, prev.y, curr.x, curr.y);
+              segGrad.addColorStop(0, prev.color || '#a855f7');
+              segGrad.addColorStop(1, curr.color || '#a855f7');
+              ctx.strokeStyle = segGrad;
+            } else {
+              ctx.strokeStyle = curr.color || '#a855f7';
+            }
+          } catch (e) {
+            ctx.strokeStyle = curr.color || '#a855f7';
+          }
           ctx.lineWidth = 1.5;
           ctx.setLineDash([2, 2]);
           ctx.shadowBlur = 4;
@@ -2939,6 +2946,12 @@ export class CircuitWorkbench {
     this.isModalFrozen = false;
     const modal = this.container.querySelector('#wb-instrument-modal');
     if (modal) modal.style.display = 'none';
+
+    const freezeBtn = this.container.querySelector('#btn-modal-freeze');
+    if (freezeBtn) {
+      freezeBtn.classList.remove('frozen');
+      freezeBtn.innerHTML = '⏸ Стоп-кадр';
+    }
   }
 
   toggleModalFreeze() {
@@ -3225,9 +3238,18 @@ export class CircuitWorkbench {
   renderModalOscilloscope(node) {
     const canvas = this.container.querySelector('#modal-instrument-canvas');
     if (!canvas) return;
+
+    if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+      if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+      }
+    }
+
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
+    if (!ctx || w <= 0 || h <= 0) return;
 
     ctx.clearRect(0, 0, w, h);
 
@@ -3374,9 +3396,18 @@ export class CircuitWorkbench {
   renderModalSpectrograph(node) {
     const canvas = this.container.querySelector('#modal-instrument-canvas');
     if (!canvas) return;
+
+    if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+      if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+      }
+    }
+
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
+    if (!ctx || w <= 0 || h <= 0) return;
 
     ctx.clearRect(0, 0, w, h);
 
@@ -3384,16 +3415,21 @@ export class CircuitWorkbench {
     ctx.fillStyle = '#030712';
     ctx.fillRect(0, 0, w, h);
 
-    const fMin = this.spectroFreqMin !== undefined ? this.spectroFreqMin : 0;
-    const fMax = this.spectroFreqMax || 40000;
+    let fMin = Number.isFinite(this.spectroFreqMin) ? this.spectroFreqMin : 0;
+    let fMax = Number.isFinite(this.spectroFreqMax) ? this.spectroFreqMax : 40000;
+    if (fMax <= fMin) {
+      fMin = 0;
+      fMax = 40000;
+    }
     const fSpan = Math.max(500, fMax - fMin);
-    const scaleV = this.spectroScaleV || 3.0;
+    const scaleV = (Number.isFinite(this.spectroScaleV) && this.spectroScaleV > 0) ? this.spectroScaleV : 3.0;
     const isDb = this.spectroScaleMode === 'db';
 
     const yBase = h - 35;
     const topMargin = 32;
     const hDivs = 10;
     const dx = w / hDivs;
+    const fToX = (f) => ((f - fMin) / fSpan) * w;
 
     // Draw vertical frequency grid lines
     ctx.strokeStyle = 'rgba(168, 85, 247, 0.1)';
@@ -3540,7 +3576,6 @@ export class CircuitWorkbench {
 
     const peaks1 = inWire1 ? this.graph.getSpectralPeaks(node.id, 'in') : [];
     const peaks2 = inWire2 ? this.graph.getSpectralPeaks(node.id, 'in-2') : [];
-    const fToX = (f) => ((f - fMin) / fSpan) * w;
 
     // Render peaks on canvas and collect HUD chips
     const peakChips = [];
@@ -3610,16 +3645,25 @@ export class CircuitWorkbench {
           if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
           else ctx.lineTo(pts[i].x, pts[i].y);
         }
-        if (sortedPeaks.length > 1 && !isDashed) {
-          const lineGrad = ctx.createLinearGradient(0, 0, w, 0);
-          sortedPeaks.forEach(p => {
-            const col = p.color || color;
-            const pos = Math.max(0, Math.min(1, fToX(p.freq) / w));
-            lineGrad.addColorStop(pos, col);
-          });
-          lineGrad.addColorStop(0, sortedPeaks[0].color || color);
-          lineGrad.addColorStop(1, sortedPeaks[sortedPeaks.length - 1].color || color);
-          ctx.strokeStyle = lineGrad;
+        if (sortedPeaks.length > 1 && !isDashed && w > 0) {
+          try {
+            const lineGrad = ctx.createLinearGradient(0, 0, w, 0);
+            const stops = [];
+            sortedPeaks.forEach(p => {
+              const col = p.color || color;
+              const rawPos = fToX(p.freq) / w;
+              if (Number.isFinite(rawPos)) {
+                stops.push({ pos: Math.max(0, Math.min(1, rawPos)), col });
+              }
+            });
+            stops.sort((a, b) => a.pos - b.pos);
+            lineGrad.addColorStop(0, stops[0]?.col || sortedPeaks[0].color || color);
+            stops.forEach(s => lineGrad.addColorStop(s.pos, s.col));
+            lineGrad.addColorStop(1, stops[stops.length - 1]?.col || sortedPeaks[sortedPeaks.length - 1].color || color);
+            ctx.strokeStyle = lineGrad;
+          } catch (e) {
+            ctx.strokeStyle = color;
+          }
         } else {
           ctx.strokeStyle = color;
         }
@@ -3654,10 +3698,18 @@ export class CircuitWorkbench {
             ctx.moveTo(prev.x, prev.y);
             ctx.bezierCurveTo(midX, prev.y, midX, curr.y, curr.x, curr.y);
 
-            const segGrad = ctx.createLinearGradient(prev.x, prev.y, curr.x, curr.y);
-            segGrad.addColorStop(0, prev.color);
-            segGrad.addColorStop(1, curr.color);
-            ctx.strokeStyle = segGrad;
+            try {
+              if (Math.abs(curr.x - prev.x) > 0.1 || Math.abs(curr.y - prev.y) > 0.1) {
+                const segGrad = ctx.createLinearGradient(prev.x, prev.y, curr.x, curr.y);
+                segGrad.addColorStop(0, prev.color || '#a855f7');
+                segGrad.addColorStop(1, curr.color || '#a855f7');
+                ctx.strokeStyle = segGrad;
+              } else {
+                ctx.strokeStyle = curr.color || '#a855f7';
+              }
+            } catch (e) {
+              ctx.strokeStyle = curr.color || '#a855f7';
+            }
             ctx.shadowColor = curr.color;
             ctx.shadowBlur = 8;
             ctx.lineWidth = 1.8;
