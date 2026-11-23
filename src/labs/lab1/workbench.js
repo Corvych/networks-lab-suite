@@ -713,6 +713,25 @@ export class CircuitWorkbench {
     const handles = el.querySelectorAll('.node-resize-handle');
     handles.forEach(handle => {
       handle.addEventListener('mousedown', (e) => {
+        // Guard: If clicking on or near any BNC port socket, do NOT trigger block resize
+        if (e.target.closest('.port-socket')) {
+          return;
+        }
+
+        const sockets = el.querySelectorAll('.port-socket');
+        for (const sock of sockets) {
+          const r = sock.getBoundingClientRect();
+          const margin = 16;
+          if (
+            e.clientX >= r.left - margin &&
+            e.clientX <= r.right + margin &&
+            e.clientY >= r.top - margin &&
+            e.clientY <= r.bottom + margin
+          ) {
+            return;
+          }
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
