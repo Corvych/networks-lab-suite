@@ -1959,25 +1959,66 @@ export class CircuitWorkbench {
       document.addEventListener('mouseup', onMouseUp);
     });
 
-    // 4. Socket wiring clicks (event delegation on nodes container)
-    this.nodesContainerEl.addEventListener('click', (e) => {
-      this.hideContextMenu();
+    // 4. Socket wiring (mousedown for drag-to-connect & click-to-connect)
+    this.nodesContainerEl.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; // Left mouse button only
       const sock = e.target.closest('.port-socket');
       if (!sock) return;
+
+      this.hideContextMenu();
       e.stopPropagation();
 
       const nodeId = sock.dataset.node;
       const portId = sock.dataset.port;
       const sockType = sock.dataset.type;
 
-      // If already dragging a wire
+      // If already dragging a wire from a previous click
       if (this.activeWiring) {
         if (this.activeWiring.nodeId === nodeId && this.activeWiring.portId === portId) {
           this.cancelWiring();
           return;
         }
 
-        // Check if connecting OUT to IN
+        const s1 = this.activeWiring;
+        const s2 = { nodeId, portId, type: sockType };
+
+        if (s1.type !== s2.type) {
+          const from = s1.type === 'out' ? s1 : s2;
+          const to = s1.type === 'in' ? s1 : s2;
+
+          this.graph.connect(from.nodeId, from.portId, to.nodeId, to.portId, this.activeWiring.color);
+          this.cancelWiring();
+          this.updateWires();
+          return;
+        }
+      }
+
+      // Start wiring from this socket on mousedown
+      const color = sock.style.getPropertyValue('--socket-color') || '#00f0ff';
+      this.startWiring(sock, nodeId, portId, sockType, color, e.clientX, e.clientY);
+    });
+
+    this.nodesContainerEl.addEventListener('click', (e) => {
+      const sock = e.target.closest('.port-socket');
+      if (!sock) return;
+      e.stopPropagation();
+
+      // If activeWiring was just started in the preceding mousedown on this same socket, do not cancel
+      if (this.activeWiring && this.activeWiring.justStarted && this.activeWiring.sourceEl === sock) {
+        this.activeWiring.justStarted = false;
+        return;
+      }
+
+      const nodeId = sock.dataset.node;
+      const portId = sock.dataset.port;
+      const sockType = sock.dataset.type;
+
+      if (this.activeWiring) {
+        if (this.activeWiring.nodeId === nodeId && this.activeWiring.portId === portId) {
+          this.cancelWiring();
+          return;
+        }
+
         const s1 = this.activeWiring;
         const s2 = { nodeId, portId, type: sockType };
 
@@ -1989,12 +2030,7 @@ export class CircuitWorkbench {
           this.cancelWiring();
           this.updateWires();
         }
-        return;
       }
-
-      // Start dragging cable from this socket (supports multiple outgoing wires from an OUT socket)
-      const color = sock.style.getPropertyValue('--socket-color') || '#00f0ff';
-      this.startWiring(sock, nodeId, portId, sockType, color);
     });
 
     // Right-click context menu on sockets for cable deletion
@@ -2274,35 +2310,133 @@ export class CircuitWorkbench {
     this.container.querySelector('#zoom-value-label').textContent = `${Math.round(this.zoom * 100)}%`;
   }
 
-  startWiring(socketEl, nodeId, portId, type, color) {
+  startWiring(socketEl, nodeId, portId, type, color, startMouseX = 0, startMouseY = 0) {
     const sRect = socketEl.getBoundingClientRect();
     const surfRect = this.surfaceEl.getBoundingClientRect();
 
     const startX = (sRect.left + sRect.width / 2 - surfRect.left) / this.zoom;
     const startY = (sRect.top + sRect.height / 2 - surfRect.top) / this.zoom;
 
-    this.activeWiring = { nodeId, portId, type, color, startX, startY };
+    this.activeWiring = {
+      nodeId,
+      portId,
+      type,
+      color,
+      startX,
+      startY,
+      sourceEl: socketEl,
+      hasDragged: false,
+      justStarted: true,
+      startClientX: startMouseX || (sRect.left + sRect.width / 2),
+      startClientY: startMouseY || (sRect.top + sRect.height / 2)
+    };
     socketEl.classList.add('source-active');
+
+    let lastHoverTarget = null;
+
+    const updateHoverHighlight = (clientX, clientY) => {
+      const elUnder = document.elementFromPoint(clientX, clientY);
+      const hoverSock = elUnder?.closest('.port-socket');
+      if (hoverSock && hoverSock !== socketEl && hoverSock.dataset.type !== type) {
+        if (lastHoverTarget && lastHoverTarget !== hoverSock) {
+          lastHoverTarget.classList.remove('snap-target');
+        }
+        hoverSock.classList.add('snap-target');
+        lastHoverTarget = hoverSock;
+      } else if (lastHoverTarget) {
+        lastHoverTarget.classList.remove('snap-target');
+        lastHoverTarget = null;
+      }
+    };
 
     const onMouseMove = (moveEvt) => {
       if (!this.activeWiring) return;
       const curX = (moveEvt.clientX - surfRect.left) / this.zoom;
       const curY = (moveEvt.clientY - surfRect.top) / this.zoom;
+
+      const dist = Math.hypot(moveEvt.clientX - this.activeWiring.startClientX, moveEvt.clientY - this.activeWiring.startClientY);
+      if (dist > 5) {
+        this.activeWiring.hasDragged = true;
+      }
+
       this.drawTempWire(this.activeWiring.startX, this.activeWiring.startY, curX, curY, color);
+      updateHoverHighlight(moveEvt.clientX, moveEvt.clientY);
     };
 
     const cleanup = () => {
       document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', cleanup);
+      document.removeEventListener('mouseup', onMouseUp);
+      if (lastHoverTarget) {
+        lastHoverTarget.classList.remove('snap-target');
+        lastHoverTarget = null;
+      }
+    };
+
+    const onMouseUp = (upEvt) => {
+      cleanup();
+
+      if (!this.activeWiring) return;
+
+      const elUnder = document.elementFromPoint(upEvt.clientX, upEvt.clientY);
+      const targetSock = elUnder?.closest('.port-socket');
+
+      // 1. Released over a target socket (drag-and-connect!)
+      if (targetSock && targetSock !== socketEl) {
+        const targetNodeId = targetSock.dataset.node;
+        const targetPortId = targetSock.dataset.port;
+        const targetType = targetSock.dataset.type;
+
+        if (this.activeWiring.type !== targetType) {
+          const from = this.activeWiring.type === 'out'
+            ? this.activeWiring
+            : { nodeId: targetNodeId, portId: targetPortId };
+          const to = this.activeWiring.type === 'in'
+            ? this.activeWiring
+            : { nodeId: targetNodeId, portId: targetPortId };
+
+          this.graph.connect(from.nodeId, from.portId, to.nodeId, to.portId, this.activeWiring.color);
+          this.cancelWiring();
+          this.updateWires();
+          return;
+        } else {
+          this.cancelWiring();
+          return;
+        }
+      }
+
+      // 2. Click without dragging (released on same socket or barely moved):
+      // Keep wire attached to cursor for click-to-connect fallback!
+      if (targetSock === socketEl || !this.activeWiring.hasDragged) {
+        const followMouseMove = (moveEvt) => {
+          if (!this.activeWiring) {
+            document.removeEventListener('mousemove', followMouseMove);
+            return;
+          }
+          const curX = (moveEvt.clientX - surfRect.left) / this.zoom;
+          const curY = (moveEvt.clientY - surfRect.top) / this.zoom;
+          this.drawTempWire(this.activeWiring.startX, this.activeWiring.startY, curX, curY, color);
+          updateHoverHighlight(moveEvt.clientX, moveEvt.clientY);
+        };
+        document.addEventListener('mousemove', followMouseMove);
+        return;
+      }
+
+      // 3. Released in empty space after dragging: cancel
+      if (this.activeWiring.hasDragged) {
+        this.cancelWiring();
+      }
     };
 
     document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', cleanup);
+    document.addEventListener('mouseup', onMouseUp);
   }
 
   cancelWiring() {
     this.activeWiring = null;
-    this.container.querySelectorAll('.port-socket').forEach(s => s.classList.remove('source-active'));
+    this.container.querySelectorAll('.port-socket').forEach(s => {
+      s.classList.remove('source-active');
+      s.classList.remove('snap-target');
+    });
     const temp = this.wiresSvgEl.querySelector('#temp-wire-drag');
     if (temp) temp.remove();
   }
